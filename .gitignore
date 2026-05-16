@@ -1,0 +1,21 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Captures & temp
+/captures/
+/tmp/
+*.png
+*.jpg
+
+# EasyOCR model cache
+~/.EasyOCR/
+
+# OS
+.DS_Store

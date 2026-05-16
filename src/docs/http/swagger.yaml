@@ -1,0 +1,290 @@
+openapi: "3.0.0"
+info:
+  title: Gate Security Service API
+  version: "1.0.0"
+  description: |
+    REST API for Residential Gate Security System.
+    - Gate validation (RFID + Plate OCR)
+    - House & Family management
+    - Vehicle registration
+    - Guest management
+    - Access logging
+    - Dues (Iuran) tracking
+  contact:
+    name: Gate Security Team
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /v1/gate/validate-rfid:
+    post:
+      tags: [Gate Validation]
+      summary: Validate RFID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RfidValidateRequest"
+      responses:
+        "200":
+          description: Validation result
+  /v1/gate/validate-plate:
+    post:
+      tags: [Gate Validation]
+      summary: Validate Plate OCR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlateValidateRequest"
+      responses:
+        "200":
+          description: Validation result
+  /v1/houses:
+    get:
+      tags: [Houses]
+      summary: List Houses
+      parameters:
+        - name: block
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of houses
+    post:
+      tags: [Houses]
+      summary: Create House
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HouseCreate"
+      responses:
+        "200":
+          description: Created house
+  /v1/houses/{house_id}:
+    get:
+      tags: [Houses]
+      summary: Get House
+      parameters:
+        - name: house_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: House detail
+    put:
+      tags: [Houses]
+      summary: Update House
+      parameters:
+        - name: house_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated house
+    delete:
+      tags: [Houses]
+      summary: Delete House
+      parameters:
+        - name: house_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+  /v1/vehicles:
+    get:
+      tags: [Vehicles]
+      summary: List Vehicles
+      responses:
+        "200":
+          description: List of vehicles
+    post:
+      tags: [Vehicles]
+      summary: Register Vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleCreate"
+      responses:
+        "200":
+          description: Created vehicle
+  /v1/vehicles/plate/{plate}:
+    get:
+      tags: [Vehicles]
+      summary: Find by Plate
+      parameters:
+        - name: plate
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Vehicle data
+  /v1/guests:
+    get:
+      tags: [Guests]
+      summary: List Active Guests
+      responses:
+        "200":
+          description: Active guests
+    post:
+      tags: [Guests]
+      summary: Register Guest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuestCreate"
+      responses:
+        "200":
+          description: Registered guest
+  /v1/guests/exit:
+    post:
+      tags: [Guests]
+      summary: Mark Guest Exit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuestExitRequest"
+      responses:
+        "200":
+          description: Guest exited
+  /v1/access-logs:
+    get:
+      tags: [Access Logs]
+      summary: Recent Access Logs
+      responses:
+        "200":
+          description: Recent logs
+  /v1/access-logs/plate/{plate}:
+    get:
+      tags: [Access Logs]
+      summary: Logs by Plate
+      parameters:
+        - name: plate
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Logs for plate
+  /v1/dues/family/{family_id}:
+    get:
+      tags: [Dues]
+      summary: Unpaid Dues by Family
+      parameters:
+        - name: family_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Unpaid dues
+  /v1/dues:
+    post:
+      tags: [Dues]
+      summary: Create Due
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DueCreate"
+      responses:
+        "200":
+          description: Created due
+  /v1/dues/pay:
+    post:
+      tags: [Dues]
+      summary: Pay Due
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuePayRequest"
+      responses:
+        "200":
+          description: Payment recorded
+components:
+  schemas:
+    RfidValidateRequest:
+      type: object
+      required: [card_uid, gate_id, direction]
+      properties:
+        card_uid: { type: string, example: "A1B2C3D4" }
+        gate_id: { type: string, example: "gate_1" }
+        direction: { type: string, example: "entry" }
+    PlateValidateRequest:
+      type: object
+      required: [plate_detected, confidence, gate_id, direction]
+      properties:
+        plate_detected: { type: string, example: "B 1234 XYZ" }
+        confidence: { type: number, example: 0.85 }
+        gate_id: { type: string, example: "gate_1" }
+        direction: { type: string, example: "entry" }
+    HouseCreate:
+      type: object
+      required: [block, house_number]
+      properties:
+        block: { type: string, example: "A" }
+        street: { type: string, example: "Jalan Melati" }
+        house_number: { type: string, example: "12" }
+        status: { type: string, example: "occupied" }
+    VehicleCreate:
+      type: object
+      required: [family_id, plate_number, type]
+      properties:
+        family_id: { type: string }
+        plate_number: { type: string, example: "B 1234 XYZ" }
+        type: { type: string, example: "car" }
+        brand: { type: string, example: "Toyota" }
+        model: { type: string, example: "Avanza" }
+        color: { type: string, example: "Silver" }
+        year: { type: integer, example: 2020 }
+    GuestCreate:
+      type: object
+      required: [visiting_house_id, guest_name, purpose]
+      properties:
+        visiting_house_id: { type: string }
+        guest_name: { type: string, example: "Ahmad" }
+        guest_phone: { type: string }
+        purpose: { type: string, example: "visit" }
+        vehicle_plate: { type: string }
+        vehicle_type: { type: string, example: "car" }
+    GuestExitRequest:
+      type: object
+      required: [guest_id, exit_gate]
+      properties:
+        guest_id: { type: string }
+        exit_gate: { type: string, example: "gate_1" }
+    DueCreate:
+      type: object
+      required: [family_id, house_id, period, type, amount]
+      properties:
+        family_id: { type: string }
+        house_id: { type: string }
+        period: { type: string, example: "2026-05" }
+        type: { type: string, example: "monthly" }
+        amount: { type: integer, example: 150000 }
+    DuePayRequest:
+      type: object
+      required: [due_id, paid_amount, payment_method]
+      properties:
+        due_id: { type: string }
+        paid_amount: { type: integer, example: 150000 }
+        payment_method: { type: string, example: "transfer" }
+        collector_name: { type: string }
