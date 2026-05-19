@@ -22,6 +22,9 @@ generate-swagger:
 seed:
 	python3 src/scripts/seed.py
 
+seed-api-keys:
+	python3 src/scripts/seed_api_key.py
+
 help:
 	@echo "Available commands:"
 	@echo "  make local-http              Start HTTP API server (port 3000)"
@@ -31,3 +34,4 @@ help:
 	@echo "  make install-ocr             Install OCR + API dependencies"
 	@echo "  make generate-swagger        Info about swagger docs"
 	@echo "  make seed                    Seed database with sample data"
+	@echo "  make seed-api-keys           Generate initial admin + device API keys"
