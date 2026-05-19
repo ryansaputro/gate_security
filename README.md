@@ -18,16 +18,45 @@ ocr-live/
 
 ## Setup
 
+### System Dependencies (Ubuntu/Debian)
+
 ```bash
-# Install dependencies (CPU-only PyTorch)
+# Required for OpenCV GUI (camera preview window)
+sudo apt install -y libgtk-3-0 libgtk-3-dev
+
+# Required for MongoDB
+sudo apt install -y mongodb-org
+# Or use Docker: docker run -d -p 27017:27017 mongo:7
+
+# Python 3.10+
+sudo apt install -y python3 python3-pip python3-full
+```
+
+### Python Dependencies
+
+```bash
+# API only (no OCR)
+pip3 install --break-system-packages -r requirements.txt
+
+# Full install with OCR + YOLO (for plate detection)
 pip3 install --break-system-packages -r requirements.txt \
   --extra-index-url https://download.pytorch.org/whl/cpu
-
-# Additional deps for EasyOCR
 pip3 install --break-system-packages python-bidi pyclipper ninja scipy scikit-image shapely
+
+# If cv2.imshow error (GTK not found):
+pip3 install --break-system-packages --force-reinstall opencv-python
 ```
 
 ## Usage
+
+### HTTP API Server
+
+```bash
+make local-http
+# Swagger: http://localhost:3000/docs
+```
+
+### Plate Detection v1 (EasyOCR only)
 
 ```bash
 # Webcam (default device 0)
@@ -38,6 +67,26 @@ python3 src/live_easyocr.py --device "http://192.168.x.x:8080/video"
 
 # RTSP (CCTV)
 python3 src/live_easyocr.py --device "rtsp://user:pass@192.168.x.x:554/live/ch00_0"
+```
+
+### Plate Detection v2 (YOLO + EasyOCR) — Recommended
+
+```bash
+# With custom trained model (best accuracy)
+make local-cmd-v2-model MODEL=models/plate_best.pt
+
+# With stream
+make local-cmd-v2-stream MODEL=models/plate_best.pt DEVICE="rtsp://..." INTERVAL=1
+
+# Without model (generic YOLO, fallback to contour detection)
+make local-cmd-v2
+```
+
+### CRON Scheduler (Dues Reminder)
+
+```bash
+make local-cron
+```
 
 # Adjust OCR interval (default 2s)
 python3 src/live_easyocr.py --interval 3

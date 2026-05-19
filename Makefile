@@ -4,6 +4,15 @@ local-http:
 local-cmd:
 	INTERFACE=CMD python3 src/main.py
 
+local-cmd-v2:
+	python3 src/live_yolo_ocr.py
+
+local-cmd-v2-model:
+	python3 src/live_yolo_ocr.py --model "$(MODEL)" --device "$(or $(DEVICE),0)"
+
+local-cmd-v2-stream:
+	python3 src/live_yolo_ocr.py --model "$(MODEL)" --device "$(DEVICE)" --interval $(or $(INTERVAL),1)
+
 local-cron:
 	INTERFACE=CRON python3 src/main.py
 
@@ -31,7 +40,10 @@ seed-api-keys:
 help:
 	@echo "Available commands:"
 	@echo "  make local-http              Start HTTP API server (port 3000)"
-	@echo "  make local-cmd               Start live OCR detection (webcam)"
+	@echo "  make local-cmd               Start live OCR v1 (webcam, EasyOCR only)"
+	@echo "  make local-cmd-v2            Start live OCR v2 (webcam, YOLO generic)"
+	@echo "  make local-cmd-v2-model MODEL=models/plate_best.pt"
+	@echo "  make local-cmd-v2-stream MODEL=models/plate_best.pt DEVICE=rtsp://... INTERVAL=1"
 	@echo "  make local-cron              Start CRON scheduler (dues reminder)"
 	@echo "  make local-cmd-stream DEVICE=rtsp://... INTERVAL=3"
 	@echo "  make install                 Install API dependencies"
