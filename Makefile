@@ -4,6 +4,9 @@ local-http:
 local-cmd:
 	INTERFACE=CMD python3 src/main.py
 
+local-cron:
+	INTERFACE=CRON python3 src/main.py
+
 local-cmd-stream:
 	INTERFACE=CMD python3 src/main.py -- --device "$(DEVICE)" --interval $(or $(INTERVAL),3)
 
@@ -29,6 +32,7 @@ help:
 	@echo "Available commands:"
 	@echo "  make local-http              Start HTTP API server (port 3000)"
 	@echo "  make local-cmd               Start live OCR detection (webcam)"
+	@echo "  make local-cron              Start CRON scheduler (dues reminder)"
 	@echo "  make local-cmd-stream DEVICE=rtsp://... INTERVAL=3"
 	@echo "  make install                 Install API dependencies"
 	@echo "  make install-ocr             Install OCR + API dependencies"

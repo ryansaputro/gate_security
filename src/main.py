@@ -31,6 +31,9 @@ def main():
     elif app_interface == "CMD":
         from interfaces.cmd.launch import launch
         launch()
+    elif app_interface == "CRON":
+        from interfaces.cron.launch import launch
+        launch()
     else:
         print(f"Interface not found: {app_interface}")
         sys.exit(1)
