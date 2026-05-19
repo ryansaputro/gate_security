@@ -16,6 +16,7 @@ from interfaces.http.routes.v1.rfid_card import router as rfid_card_router
 from interfaces.http.routes.v1.event import router as event_router
 from interfaces.http.routes.v1.setting import router as setting_router
 from interfaces.http.routes.v1.master_data import router as master_data_router
+from interfaces.http.routes.v1.api_key import router as api_key_router
 
 
 def mount_v1_routes(app: FastAPI, prefix: str = "/v1"):
@@ -31,3 +32,4 @@ def mount_v1_routes(app: FastAPI, prefix: str = "/v1"):
     app.include_router(event_router, prefix=prefix)
     app.include_router(setting_router, prefix=prefix)
     app.include_router(master_data_router, prefix=prefix)
+    app.include_router(api_key_router, prefix=prefix)

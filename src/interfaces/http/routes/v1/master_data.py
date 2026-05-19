@@ -2,11 +2,14 @@
 Master Data routes.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from interfaces.http.controllers.v1.master_data.interface import controller
+from interfaces.http.middlewares.auth import require_auth
 
 router = APIRouter(prefix="/master-data", tags=["Master Data"])
 
-router.get("/{type}")(controller.list_by_type)
-router.post("")(controller.create_master_data)
-router.delete("/{master_id}")(controller.delete_master_data)
+_admin_auth = Depends(require_auth(["admin"]))
+
+router.get("/{type}", dependencies=[_admin_auth])(controller.list_by_type)
+router.post("", dependencies=[_admin_auth])(controller.create_master_data)
+router.delete("/{master_id}", dependencies=[_admin_auth])(controller.delete_master_data)

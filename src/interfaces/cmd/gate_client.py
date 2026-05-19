@@ -9,6 +9,7 @@ import time
 
 
 API_BASE = os.getenv("GATE_API_URL", "http://localhost:3000")
+API_KEY = os.getenv("GATE_API_KEY", "")
 GATE_ID = os.getenv("GATE_ID", "gate_1")
 DIRECTION = os.getenv("GATE_DIRECTION", "entry")
 COOLDOWN_SECONDS = int(os.getenv("GATE_COOLDOWN", "10"))
@@ -24,7 +25,11 @@ def _get_vote_threshold() -> int:
     if _vote_threshold is not None:
         return _vote_threshold
     try:
-        resp = requests.get(f"{API_BASE}/v1/settings/ocr_vote_threshold", timeout=3)
+        headers = {}
+        if API_KEY:
+            headers["X-API-Key"] = API_KEY
+        resp = requests.get(f"{API_BASE}/v1/settings/ocr_vote_threshold",
+                            headers=headers, timeout=3)
         data = resp.json()
         val = data.get("data", {}).get("value", "3")
         _vote_threshold = int(val) if val else 3
@@ -50,6 +55,10 @@ def validate_and_open(plate: str, confidence: float, votes: int):
         return None
 
     try:
+        headers = {}
+        if API_KEY:
+            headers["X-API-Key"] = API_KEY
+
         resp = requests.post(
             f"{API_BASE}/v1/gate/validate-plate",
             json={
@@ -58,6 +67,7 @@ def validate_and_open(plate: str, confidence: float, votes: int):
                 "gate_id": GATE_ID,
                 "direction": DIRECTION,
             },
+            headers=headers,
             timeout=5,
         )
         data = resp.json()
