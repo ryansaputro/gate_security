@@ -181,14 +181,37 @@ def main():
     parser = argparse.ArgumentParser(description='Indonesian Plate Detection v6')
     parser.add_argument('--device', default='0', help='Camera ID or URL')
     parser.add_argument('--interval', type=float, default=3.0, help='OCR interval')
+    parser.add_argument('--image', default=None, help='Test on single image file')
     args = parser.parse_args()
-
-    source = int(args.device) if args.device.isdigit() else args.device
-    is_stream = isinstance(source, str)
 
     print("Loading EasyOCR model...")
     reader = easyocr.Reader(['en'], gpu=False)
     print("Model loaded!")
+
+    # Image mode: test on single file
+    if args.image:
+        print(f"Testing on image: {args.image}")
+        frame = cv2.imread(args.image)
+        if frame is None:
+            print(f"Cannot read: {args.image}")
+            return
+        processed = preprocess_for_plate(frame)
+        results = reader.readtext(processed, paragraph=False, min_size=20,
+                                  text_threshold=0.5, low_text=0.3)
+        if results:
+            results = merge_horizontal_texts(results)
+        print(f"\n  All OCR results:")
+        for (bbox, text, conf) in results:
+            clean = re.sub(r'[^A-Z0-9]', '', text.upper())
+            fmt = format_plate(clean) if len(clean) >= 4 else None
+            is_plate = is_plate_candidate(text, bbox)
+            marker = "✅" if is_plate else "  "
+            print(f"  {marker} [{conf:.0%}] '{text}' -> {fmt or clean}")
+        print()
+        return
+
+    source = int(args.device) if args.device.isdigit() else args.device
+    is_stream = isinstance(source, str)
 
     if is_stream:
         grabber = FrameGrabber(source)

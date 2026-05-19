@@ -69,7 +69,7 @@ python3 src/live_easyocr.py --device "http://192.168.x.x:8080/video"
 python3 src/live_easyocr.py --device "rtsp://user:pass@192.168.x.x:554/live/ch00_0"
 ```
 
-### Plate Detection v2 (YOLO + EasyOCR) — Recommended
+### Plate Detection v2 (YOLO + EasyOCR)
 
 ```bash
 # With custom trained model (best accuracy)
@@ -81,6 +81,61 @@ make local-cmd-v2-stream MODEL=models/plate_best.pt DEVICE="rtsp://..." INTERVAL
 # Without model (generic YOLO, fallback to contour detection)
 make local-cmd-v2
 ```
+
+### Plate Detection v3 (YOLO + PaddleOCR) — Recommended, Fastest
+
+~4-5x faster than v2 (EasyOCR). Same accuracy, much lower latency.
+
+#### v3 Dependencies
+
+```bash
+# System (Ubuntu/Debian)
+sudo apt install -y libgtk-3-0 libgtk-3-dev python3 python3-pip
+
+# Python packages (MUST use these exact versions to avoid ABI conflicts)
+pip3 install --break-system-packages --force-reinstall \
+  numpy==1.26.4 \
+  opencv-python==4.10.0.84 \
+  paddlepaddle==2.6.2 \
+  paddleocr==2.9.1 \
+  ultralytics
+
+# Or use Makefile shortcut:
+make fix-gui
+make install-paddle
+```
+
+#### v3 Usage
+
+```bash
+# Webcam with GUI window
+make local-cmd-v3
+
+# Webcam headless (terminal only, no window)
+make local-cmd-v3-headless
+
+# With custom YOLO model
+make local-cmd-v3-model MODEL=models/plate_best.pt
+
+# RTSP/IP stream
+make local-cmd-v3-stream MODEL=models/plate_best.pt DEVICE="rtsp://..." INTERVAL=1
+
+# Test on single image
+make local-cmd-v3-image MODEL=models/plate_best.pt IMAGE=/tmp/plate.png
+```
+
+#### v3 Controls (GUI mode)
+
+- `q` / `ESC` - Quit
+- `s` - Save current frame to /tmp
+- `r` - Reset plate detection
+
+#### v3 Notes
+
+- First run downloads PaddleOCR model (~30MB, cached after)
+- Requires ~800MB RAM (vs ~1.5GB for EasyOCR)
+- Detection speed: ~0.2s per frame (vs ~0.9s EasyOCR)
+- If GUI crashes with GTK error, run `make fix-gui` first
 
 ### CRON Scheduler (Dues Reminder)
 

@@ -75,34 +75,64 @@ class PlateDetectorYOLO:
         self.vehicle_classes = [2, 3, 5, 7]  # car, motorcycle, bus, truck
 
     def detect(self, frame):
+        """
+        Simple approach: YOLO checks if plate exists in frame.
+        If yes, run full v1 OCR logic (no position filtering).
+        YOLO box returned for display only.
+        """
         results = self.model(frame, verbose=False, conf=self.conf_threshold)
         detections = []
 
+        # Get plate boxes from YOLO
+        plate_boxes = []
         for result in results:
             if result.boxes is None:
                 continue
             for box in result.boxes:
-                cls_id = int(box.cls[0])
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
+                plate_boxes.append((x1, y1, x2, y2))
 
-                if self.is_plate_model:
-                    crop = self._crop(frame, x1, y1, x2, y2)
-                    text, conf = self._read_plate(crop)
-                    if text:
-                        detections.append((text, conf, (x1, y1, x2, y2)))
-                else:
-                    if cls_id not in self.vehicle_classes:
-                        continue
-                    plate_box = self._find_plate_contour(frame, x1, y1, x2, y2)
-                    if plate_box:
-                        px1, py1, px2, py2 = plate_box
-                        crop = self._crop(frame, px1, py1, px2, py2)
-                        text, conf = self._read_plate(crop)
-                        if text:
-                            detections.append((text, conf, (px1, py1, px2, py2)))
+        if not plate_boxes:
+            return detections
+
+        # Plate detected! Run exact v1 OCR on full frame
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        processed = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
+
+        ocr_results = self.reader.readtext(
+            processed, paragraph=False, min_size=20,
+            text_threshold=0.5, low_text=0.3,
+        )
+
+        if not ocr_results:
+            return detections
+
+        # Same plate candidate logic as v1
+        for (bbox, text, conf) in ocr_results:
+            if conf < 0.1:
+                continue
+            clean = re.sub(r'[^A-Z0-9]', '', text.upper())
+            if len(clean) < 4 or len(clean) > 12:
+                continue
+            has_letter = any(c.isalpha() for c in clean)
+            has_digit = any(c.isdigit() for c in clean)
+            if not (has_letter and has_digit):
+                continue
+            # Check first 2 chars have a letter (area code)
+            if not any(c.isalpha() for c in clean[:2]):
+                continue
+
+            formatted = format_plate(clean)
+            result = formatted if formatted else clean
+
+            # Use first YOLO box for display
+            detections.append((result, conf, plate_boxes[0]))
+
         return detections
 
-    def _crop(self, frame, x1, y1, x2, y2, pad=5):
+    def _crop(self, frame, x1, y1, x2, y2, pad=20):
         h, w = frame.shape[:2]
         return frame[max(0,y1-pad):min(h,y2+pad), max(0,x1-pad):min(w,x2+pad)]
 
@@ -130,21 +160,38 @@ class PlateDetectorYOLO:
         return best
 
     def _read_plate(self, crop):
+        """Use same preprocessing approach as v1 (live_easyocr) which works."""
         if crop is None or crop.size == 0:
             return None, 0.0
         h, w = crop.shape[:2]
         if w < 20 or h < 10:
             return None, 0.0
-        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-        gray = cv2.createCLAHE(3.0, (4,4)).apply(gray)
-        scale = max(1, 200 // w)
-        if scale > 1:
-            gray = cv2.resize(gray, (w*scale, h*scale), interpolation=cv2.INTER_CUBIC)
-        bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-        results = self.reader.readtext(bgr, paragraph=False, min_size=10,
-                                       text_threshold=0.4, low_text=0.3)
+
+        # Scale up significantly (v1 works on large frames)
+        target_w = max(400, w * 3)
+        scale = target_w / w
+        crop_large = cv2.resize(crop, (int(w * scale), int(h * scale)),
+                                interpolation=cv2.INTER_CUBIC)
+
+        # Same preprocessing as v1 (preprocess_for_plate from live_easyocr)
+        gray = cv2.cvtColor(crop_large, cv2.COLOR_BGR2GRAY)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
+        processed = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
+
+        # Run EasyOCR same params as v1
+        results = self.reader.readtext(
+            processed,
+            paragraph=False,
+            min_size=20,
+            text_threshold=0.5,
+            low_text=0.3,
+        )
+
         if not results:
             return None, 0.0
+
+        # Combine all text (same as v1 merge approach)
         all_text, total_conf, count = "", 0.0, 0
         for (_, text, conf) in results:
             if conf < 0.1:
@@ -152,11 +199,14 @@ class PlateDetectorYOLO:
             all_text += text
             total_conf += conf
             count += 1
+
         if not all_text or count == 0:
             return None, 0.0
+
         clean = re.sub(r"[^A-Z0-9]", "", all_text.upper())
         if len(clean) < 4:
             return None, 0.0
+
         formatted = format_plate(clean)
         result = formatted if formatted else clean
         has_letter = any(c.isalpha() for c in result.replace(" ", ""))
@@ -172,7 +222,39 @@ def main():
     parser.add_argument("--interval", type=float, default=1.0)
     parser.add_argument("--model", default=None, help="Path to YOLO .pt model")
     parser.add_argument("--conf", type=float, default=0.4)
+    parser.add_argument("--image", default=None, help="Test on single image (no camera)")
     args = parser.parse_args()
+
+    # Image mode: test on single file, no camera needed
+    if args.image:
+        print("Testing on image:", args.image)
+        detector = PlateDetectorYOLO(model_path=args.model, conf_threshold=args.conf)
+        frame = cv2.imread(args.image)
+        if frame is None:
+            print(f"Cannot read image: {args.image}")
+            return
+
+        # Debug: run raw YOLO to see what it detects
+        print("\n  [DEBUG] Raw YOLO detections:")
+        raw_results = detector.model(frame, verbose=False, conf=0.1)
+        for r in raw_results:
+            if r.boxes is not None:
+                for box in r.boxes:
+                    cls_id = int(box.cls[0])
+                    conf = float(box.conf[0])
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    cls_name = detector.model.names.get(cls_id, f"class_{cls_id}")
+                    print(f"    class={cls_id} ({cls_name}) conf={conf:.2f} box=({x1},{y1},{x2},{y2})")
+
+        detections = detector.detect(frame)
+        if not detections:
+            print("\n  No plates detected after OCR pipeline. Try --conf 0.1")
+        for (text, conf, (x1,y1,x2,y2)) in detections:
+            print(f"  [{conf:.0%}] {text} | box=({x1},{y1},{x2},{y2})")
+            cv2.rectangle(frame, (x1,y1), (x2,y2), (0,255,0), 2)
+        cv2.imwrite("/tmp/plate-v2-result.png", frame)
+        print(f"  Result saved to /tmp/plate-v2-result.png")
+        return
 
     source = int(args.device) if args.device.isdigit() else args.device
     is_stream = isinstance(source, str)
