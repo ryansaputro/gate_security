@@ -54,24 +54,25 @@ def seed_houses():
 def seed_families(houses):
     """Seed families linked to houses."""
     names = [
-        ("Budi Santoso", "+6281234567001"),
-        ("Agus Wijaya", "+6281234567002"),
-        ("Siti Rahayu", "+6281234567003"),
-        ("Dedi Kurniawan", "+6281234567004"),
-        ("Rina Marlina", "+6281234567005"),
-        ("Hendra Gunawan", "+6281234567006"),
-        ("Dewi Lestari", "+6281234567007"),
-        ("Eko Prasetyo", "+6281234567008"),
-        ("Fitri Handayani", "+6281234567009"),
-        ("Joko Susilo", "+6281234567010"),
+        ("Budi Santoso", "+6281234567001", "budi.santoso@gmail.com"),
+        ("Agus Wijaya", "+6281234567002", "agus.wijaya@gmail.com"),
+        ("Siti Rahayu", "+6281234567003", "siti.rahayu@gmail.com"),
+        ("Dedi Kurniawan", "+6281234567004", "dedi.k@gmail.com"),
+        ("Rina Marlina", "+6281234567005", "rina.marlina@gmail.com"),
+        ("Hendra Gunawan", "+6281234567006", "hendra.g@gmail.com"),
+        ("Dewi Lestari", "+6281234567007", "dewi.lestari@gmail.com"),
+        ("Eko Prasetyo", "+6281234567008", ""),
+        ("Fitri Handayani", "+6281234567009", "fitri.h@gmail.com"),
+        ("Joko Susilo", "+6281234567010", ""),
     ]
     families = []
     for i, house in enumerate(houses):
-        name, phone = names[i]
+        name, phone, email = names[i]
         families.append({
             "houseId": str(house["_id"]),
             "headName": name,
             "headPhone": phone,
+            "email": email,
             "headIdNumber": f"320100000000{i+1:04d}",
             "members": [
                 {"name": f"Istri {name.split()[0]}", "relation": "wife", "phone": "", "idNumber": "", "isActive": True},
@@ -306,6 +307,9 @@ def seed_settings():
     settings = [
         {"key": "gate_mode", "value": "rfid_primary", "category": "gate", "description": "Primary gate validation method (rfid_primary|plate_only|rfid_only|both_required)"},
         {"key": "dues_block_enabled", "value": "true", "category": "dues", "description": "Block access for unpaid dues"},
+        {"key": "dues_monthly_amount", "value": "150000", "category": "dues", "description": "Nominal iuran bulanan (Rp)"},
+        {"key": "dues_due_day", "value": "5", "category": "dues", "description": "Tanggal jatuh tempo iuran setiap bulan"},
+        {"key": "dues_reminder_enabled", "value": "true", "category": "dues", "description": "Enable/disable dues reminder cron"},
         {"key": "ocr_confidence_threshold", "value": "0.6", "category": "gate", "description": "Minimum OCR confidence for plate fuzzy match (0.0-1.0)"},
         {"key": "ocr_vote_threshold", "value": "3", "category": "gate", "description": "Minimum OCR votes before triggering gate validation"},
         {"key": "gate_cooldown_seconds", "value": "10", "category": "gate", "description": "Cooldown seconds between gate open for same plate"},
