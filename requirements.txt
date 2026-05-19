@@ -4,6 +4,7 @@ pytesseract>=0.3.10
 easyocr>=1.7.0
 torch>=2.0.0
 torchvision>=0.15.0
+ultralytics>=8.1.0
 
 # API
 fastapi>=0.110.0

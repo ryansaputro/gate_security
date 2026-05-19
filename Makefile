@@ -4,6 +4,15 @@ local-http:
 local-cmd:
 	INTERFACE=CMD python3 src/main.py
 
+local-cmd-v2:
+	python3 src/live_yolo_ocr.py
+
+local-cmd-v2-stream:
+	python3 src/live_yolo_ocr.py --device "$(DEVICE)" --interval $(or $(INTERVAL),1)
+
+local-cmd-v2-model:
+	python3 src/live_yolo_ocr.py --model "$(MODEL)" --device "$(or $(DEVICE),0)"
+
 local-cron:
 	INTERFACE=CRON python3 src/main.py
 
