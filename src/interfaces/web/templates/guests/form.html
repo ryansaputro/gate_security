@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+{% set active = "guests" %}
+
+{% block title %}{{ 'Edit' if guest else 'Register' }} Guest{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ 'Edit' if guest else 'Register' }} Guest</h2>
+
+  <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Guest Name *</label>
+        <input type="text" name="guest_name" value="{{ guest.guest_name if guest else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+        <input type="text" name="guest_phone" value="{{ guest.guest_phone if guest else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="+628...">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">ID Number (KTP)</label>
+        <input type="text" name="guest_id_number" value="{{ guest.guest_id_number if guest else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+        <select name="purpose" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="visit" {{ 'selected' if guest and guest.purpose == 'visit' else '' }}>Visit</option>
+          <option value="delivery" {{ 'selected' if guest and guest.purpose == 'delivery' else '' }}>Delivery</option>
+          <option value="service" {{ 'selected' if guest and guest.purpose == 'service' else '' }}>Service</option>
+          <option value="contractor" {{ 'selected' if guest and guest.purpose == 'contractor' else '' }}>Contractor</option>
+          <option value="other" {{ 'selected' if guest and guest.purpose == 'other' else '' }}>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Plate</label>
+        <input type="text" name="vehicle_plate" value="{{ guest.vehicle_plate if guest else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" placeholder="B 1234 XYZ">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+        <select name="vehicle_type" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="none" {{ 'selected' if guest and guest.vehicle_type == 'none' else '' }}>None</option>
+          <option value="car" {{ 'selected' if guest and guest.vehicle_type == 'car' else '' }}>Car</option>
+          <option value="motorcycle" {{ 'selected' if guest and guest.vehicle_type == 'motorcycle' else '' }}>Motorcycle</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Visiting House</label>
+        <select name="visiting_house_id" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">-- Select house --</option>
+          {% for h in houses %}
+          <option value="{{ h._id }}" {{ 'selected' if guest and (guest.visiting_house_id|string) == (h._id|string) else '' }}>Block {{ h.block }} No. {{ h.house_number }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Approved By</label>
+        <select name="approved_by" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="security" {{ 'selected' if guest and guest.approved_by == 'security' else '' }}>Security</option>
+          <option value="resident" {{ 'selected' if guest and guest.approved_by == 'resident' else '' }}>Resident</option>
+        </select>
+      </div>
+    </div>
+
+    {% if guest %}
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+      <select name="status" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="inside" {{ 'selected' if guest.status == 'inside' else '' }}>Inside</option>
+        <option value="exited" {{ 'selected' if guest.status == 'exited' else '' }}>Exited</option>
+        <option value="expired" {{ 'selected' if guest.status == 'expired' else '' }}>Expired</option>
+      </select>
+    </div>
+    {% endif %}
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Max Duration (hours)</label>
+      <input type="number" name="max_duration_hours" value="{{ guest.max_duration_hours if guest and guest.max_duration_hours else default_max_hours }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" max="168" placeholder="24">
+      <p class="text-xs text-gray-400 mt-1">Auto-expire setelah N jam. Default dari Settings: {{ default_max_hours }}h</p>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+      <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Tukang AC, paket JNE...">{{ guest.notes if guest else '' }}</textarea>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+      <a href="/admin/guests" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+    </div>
+  </form>
+
+  {% if guest %}
+  <div class="flex gap-3 mt-4">
+    {% if guest.status == 'inside' %}
+    <form method="POST" action="/admin/guests/{{ guest._id }}/checkout">
+      <button type="submit" class="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700">Check Out</button>
+    </form>
+    {% endif %}
+    <form method="POST" action="/admin/guests/{{ guest._id }}/delete" onsubmit="return confirm('Delete this guest record?')">
+      <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

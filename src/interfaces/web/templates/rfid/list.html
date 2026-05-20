@@ -48,7 +48,7 @@
       <tbody class="divide-y divide-slate-50">
         {% for card in cards %}
         <tr class="table-row hover:bg-slate-50/50">
-          <td class="px-5 py-3.5 font-mono font-semibold text-slate-800">{{ card.uid }}</td>
+          <td class="px-5 py-3.5 font-mono font-semibold text-slate-800">{{ card.card_uid }}</td>
           <td class="px-5 py-3.5 text-slate-700">{{ card.holder_name or '-' }}</td>
           <td class="px-5 py-3.5 text-slate-600">{{ card.card_type or '-' }}</td>
           <td class="px-5 py-3.5">
@@ -57,7 +57,7 @@
               {{ 'Active' if card.is_active else 'Inactive' }}
             </span>
           </td>
-          <td class="px-5 py-3.5 text-slate-600">{{ card.last_used.strftime('%d %b %Y %H:%M') if card.last_used else '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-600">{{ card.last_used_at.strftime('%d %b %Y %H:%M') if card.last_used_at else '-' }}</td>
           <td class="px-5 py-3.5 text-right">
             <div class="flex items-center justify-end gap-1">
               <a href="/admin/rfid/{{ card._id }}" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="Edit">

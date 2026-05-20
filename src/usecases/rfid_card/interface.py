@@ -87,9 +87,11 @@ class RfidCardUsecase:
         return {
             "id": card.id,
             "card_uid": card.card_uid,
+            "family_id": card.family_id,
             "holder_name": card.holder_name,
             "card_type": card.card_type,
             "is_active": card.is_active,
+            "blocked_reason": card.blocked_reason,
             "last_used_at": card.last_used_at,
         }
 

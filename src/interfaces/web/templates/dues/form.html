@@ -1,0 +1,93 @@
+{% extends "layout.html" %}
+{% set active = "dues" %}
+
+{% block title %}{{ 'Edit' if due else 'Create' }} Due{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ 'Edit' if due else 'Create' }} Iuran</h2>
+
+  <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Family (KK) *</label>
+        <select name="family_id" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+          <option value="">-- Select family --</option>
+          {% for f in families %}
+          <option value="{{ f._id }}" {{ 'selected' if due and (due.family_id|string) == (f._id|string) else '' }}>{{ f.head_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Period (YYYY-MM) *</label>
+        <input type="month" name="period" value="{{ due.period if due else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+        <select name="type" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="monthly" {{ 'selected' if due and due.type == 'monthly' else '' }}>Monthly</option>
+          <option value="security" {{ 'selected' if due and due.type == 'security' else '' }}>Security</option>
+          <option value="cleaning" {{ 'selected' if due and due.type == 'cleaning' else '' }}>Cleaning</option>
+          <option value="parking" {{ 'selected' if due and due.type == 'parking' else '' }}>Parking</option>
+          <option value="other" {{ 'selected' if due and due.type == 'other' else '' }}>Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select name="status" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="unpaid" {{ 'selected' if due and due.status == 'unpaid' else '' }}>Unpaid</option>
+          <option value="paid" {{ 'selected' if due and due.status == 'paid' else '' }}>Paid</option>
+          <option value="partial" {{ 'selected' if due and due.status == 'partial' else '' }}>Partial</option>
+          <option value="overdue" {{ 'selected' if due and due.status == 'overdue' else '' }}>Overdue</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Amount (Rp)</label>
+        <input type="number" name="amount" value="{{ due.amount if due else '350000' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" min="0">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Paid Amount (Rp)</label>
+        <input type="number" name="paid_amount" value="{{ due.paid_amount if due else '0' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" min="0">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+        <select name="payment_method" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="" {{ 'selected' if not due or not due.payment_method else '' }}>-- None --</option>
+          <option value="cash" {{ 'selected' if due and due.payment_method == 'cash' else '' }}>Cash</option>
+          <option value="transfer" {{ 'selected' if due and due.payment_method == 'transfer' else '' }}>Transfer</option>
+          <option value="qris" {{ 'selected' if due and due.payment_method == 'qris' else '' }}>QRIS</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Collector</label>
+        <input type="text" name="collector_name" value="{{ due.collector_name if due else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Pak RT">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+      <textarea name="notes" rows="2" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ due.notes if due else '' }}</textarea>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+      <a href="/admin/dues" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+    </div>
+  </form>
+
+  {% if due %}
+  <form method="POST" action="/admin/dues/{{ due._id }}/delete" class="mt-4" onsubmit="return confirm('Delete this due record?')">
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

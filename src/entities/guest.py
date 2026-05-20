@@ -22,4 +22,5 @@ class Guest:
     approved_by: str = ""  # resident | security
     status: str = "inside"  # inside | exited | expired
     notes: str = ""
+    max_duration_hours: int = 0  # 0 = use system default from settings
     created_at: datetime = field(default_factory=datetime.now)

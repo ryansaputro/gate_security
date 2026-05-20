@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+{% set active = "settings" %}
+
+{% block title %}{{ 'Edit' if setting else 'Create' }} Setting{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ 'Edit' if setting else 'Create' }} Setting</h2>
+
+  <form method="POST" action="{{ '/admin/settings/' + setting._id + '/edit' if setting else '/admin/settings/create' }}" class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Key *</label>
+      {% if setting %}
+      <input type="text" name="key" value="{{ setting.key }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" required>
+      {% else %}
+      <select name="key" id="key-select" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" onchange="toggleCustomKey(this)">
+        <option value="">-- Select or type custom --</option>
+        <option value="gate_mode">gate_mode</option>
+        <option value="dues_block_enabled">dues_block_enabled</option>
+        <option value="dues_grace_period_days">dues_grace_period_days</option>
+        <option value="ocr_confidence_threshold">ocr_confidence_threshold</option>
+        <option value="ocr_vote_threshold">ocr_vote_threshold</option>
+        <option value="guest_max_duration_hours">guest_max_duration_hours</option>
+        <option value="notification_channel">notification_channel</option>
+        <option value="__custom__">Custom key...</option>
+      </select>
+      <input type="text" name="key_custom" id="key-custom" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono mt-2 hidden" placeholder="custom_key_name">
+      {% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Value *</label>
+      <input type="text" name="value" value="{{ setting.value if setting else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" required placeholder="rfid_and_plate">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+      <select name="category" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="general" {{ 'selected' if setting and setting.category == 'general' else '' }}>General</option>
+        <option value="gate" {{ 'selected' if setting and setting.category == 'gate' else '' }}>Gate</option>
+        <option value="dues" {{ 'selected' if setting and setting.category == 'dues' else '' }}>Dues</option>
+        <option value="notification" {{ 'selected' if setting and setting.category == 'notification' else '' }}>Notification</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+      <input type="text" name="description" value="{{ setting.description if setting else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="What this setting controls">
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+      <a href="/admin/settings" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+    </div>
+  </form>
+
+  {% if setting %}
+  <form method="POST" action="/admin/settings/{{ setting._id }}/delete" class="mt-4" onsubmit="return confirm('Delete setting {{ setting.key }}?')">
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+function toggleCustomKey(select) {
+  const custom = document.getElementById('key-custom');
+  if (select.value === '__custom__') {
+    custom.classList.remove('hidden');
+    custom.required = true;
+    custom.name = 'key';
+    select.name = '';
+  } else {
+    custom.classList.add('hidden');
+    custom.required = false;
+    custom.name = 'key_custom';
+    select.name = 'key';
+  }
+}
+</script>
+{% endblock %}

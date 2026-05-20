@@ -32,7 +32,7 @@
       <select name="family_id" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option value="">-- No family --</option>
         {% for f in families %}
-        <option value="{{ f._id }}" {{ 'selected' if card and card.family_id == f._id else '' }}>{{ f.head_name }}</option>
+        <option value="{{ f._id }}" {{ 'selected' if card and (card.family_id|string) == (f._id|string) else '' }}>{{ f.head_name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -47,12 +47,13 @@
     <div class="flex gap-3 pt-4">
       <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
       <a href="/admin/rfid" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
-      {% if card %}
-      <form method="POST" action="/admin/rfid/{{ card._id }}/delete" class="ml-auto" onsubmit="return confirm('Delete this RFID card?')">
-        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
-      </form>
-      {% endif %}
     </div>
   </form>
+
+  {% if card %}
+  <form method="POST" action="/admin/rfid/{{ card._id }}/delete" class="mt-4" onsubmit="return confirm('Delete this RFID card?')">
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+  </form>
+  {% endif %}
 </div>
 {% endblock %}

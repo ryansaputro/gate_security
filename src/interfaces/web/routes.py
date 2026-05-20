@@ -271,10 +271,14 @@ def dues_list(request: Request):
     if not user:
         return RedirectResponse(url="/admin/login", status_code=303)
     from usecases.due.interface import due_usecase
+    from usecases.family.interface import family_usecase
+    from usecases.house.interface import house_usecase
     page = int(request.query_params.get("page", 1))
     search = request.query_params.get("q", "").strip()
     status_filter = request.query_params.get("status", "").strip()
     month_filter = request.query_params.get("month", "").strip()  # format: YYYY-MM
+    family_filter = request.query_params.get("family_id", "").strip()
+    block_filter = request.query_params.get("block", "").strip()
     per_page = int(request.query_params.get("per_page", PER_PAGE))
     if per_page not in (10, 20, 50, 100):
         per_page = PER_PAGE
@@ -284,13 +288,37 @@ def dues_list(request: Request):
         parts = month_filter.split("-")
         if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
             filter_year, filter_month = int(parts[0]), int(parts[1])
-    dues, page, total_pages, total = due_usecase.list(search=search or None, status=status_filter or None, year=filter_year, month=filter_month, page=page, per_page=per_page)
+    # If block filter, resolve family_ids in that block
+    family_ids_in_block = None
+    if block_filter:
+        from bson import ObjectId as _OID
+        db = get_db()
+        house_ids = [h["_id"] for h in db.houses.find({"block": block_filter}, {"_id": 1})]
+        if house_ids:
+            family_ids_in_block = [str(f["_id"]) for f in db.families.find({"houseId": {"$in": [str(h) for h in house_ids]}}, {"_id": 1})]
+        else:
+            family_ids_in_block = []
+    dues, page, total_pages, total = due_usecase.list(
+        search=search or None, status=status_filter or None,
+        year=filter_year, month=filter_month,
+        family_id=family_filter or None,
+        family_ids=family_ids_in_block,
+        page=page, per_page=per_page,
+    )
     dues_data = [{"_id": d.id, **due_usecase.serialize(d)} for d in dues]
     dues_data = due_usecase.enrich_with_family(dues_data)
+    # Get families and blocks for filter dropdowns
+    families, _, _, _ = family_usecase.list(page=1, per_page=200)
+    families_list = [{"_id": f.id, "head_name": f.head_name} for f in families]
+    db = get_db()
+    blocks = sorted(set(h.get("block", "") for h in db.houses.find({}, {"block": 1}) if h.get("block")))
     return render("dues/list.html",
         dues=dues_data,
         page=page, total_pages=total_pages, total=total, per_page=per_page,
-        base_url="/admin/dues", export_url="/admin/export/dues", search=search, status_filter=status_filter, month_filter=month_filter)
+        base_url="/admin/dues", export_url="/admin/export/dues",
+        search=search, status_filter=status_filter, month_filter=month_filter,
+        family_filter=family_filter, block_filter=block_filter,
+        families=families_list, blocks=blocks)
 
 
 @router.get("/events", response_class=HTMLResponse)
@@ -596,46 +624,377 @@ def rfid_delete(request: Request, id: str):
     return RedirectResponse(url="/admin/rfid?msg=RFID+card+saved", status_code=303)
 
 
-# ==================== GUESTS (Detail only) ====================
+# ==================== GUESTS CRUD ====================
+
+@router.get("/guests/create", response_class=HTMLResponse)
+def guests_create_form(request: Request):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.house.interface import house_usecase
+    from usecases.setting.interface import setting_usecase
+    houses, _, _, _ = house_usecase.list(page=1, per_page=200)
+    default_max_hours = setting_usecase.get_value("guest_max_duration_hours", "24")
+    return render("guests/form.html", guest=None,
+        houses=[{"_id": h.id, "block": h.block, "house_number": h.house_number} for h in houses],
+        default_max_hours=int(default_max_hours) if default_max_hours.isdigit() else 24)
+
+
+@router.post("/guests/create")
+def guests_create(
+    request: Request,
+    guest_name: str = Form(""),
+    guest_phone: str = Form(""),
+    guest_id_number: str = Form(""),
+    purpose: str = Form("visit"),
+    vehicle_plate: str = Form(""),
+    vehicle_type: str = Form("none"),
+    visiting_house_id: str = Form(""),
+    approved_by: str = Form("security"),
+    notes: str = Form(""),
+    max_duration_hours: str = Form("0"),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.guest.interface import guest_usecase
+    guest_usecase.create(
+        guest_name=guest_name, guest_phone=guest_phone,
+        guest_id_number=guest_id_number, purpose=purpose,
+        vehicle_plate=vehicle_plate, vehicle_type=vehicle_type,
+        visiting_house_id=visiting_house_id, approved_by=approved_by,
+        notes=notes,
+        max_duration_hours=int(max_duration_hours) if max_duration_hours.isdigit() else 0,
+    )
+    return RedirectResponse(url="/admin/guests?msg=Guest+registered", status_code=303)
+
 
 @router.get("/guests/{id}", response_class=HTMLResponse)
-def guests_detail(request: Request, id: str):
+def guests_edit_form(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
     from usecases.guest.interface import guest_usecase
+    from usecases.house.interface import house_usecase
+    from usecases.setting.interface import setting_usecase
     guest = guest_usecase.find_by_id(id)
     if not guest:
         return RedirectResponse(url="/admin/guests", status_code=303)
-    return render("guests/detail.html", guest={"_id": guest.id, **guest_usecase.serialize(guest)})
+    houses, _, _, _ = house_usecase.list(page=1, per_page=200)
+    default_max_hours = setting_usecase.get_value("guest_max_duration_hours", "24")
+    return render("guests/form.html",
+        guest={"_id": guest.id, **guest_usecase.serialize(guest)},
+        houses=[{"_id": h.id, "block": h.block, "house_number": h.house_number} for h in houses],
+        default_max_hours=int(default_max_hours) if default_max_hours.isdigit() else 24)
 
 
-# ==================== DUES (Detail only) ====================
+@router.post("/guests/{id}")
+def guests_update(
+    request: Request,
+    id: str,
+    guest_name: str = Form(""),
+    guest_phone: str = Form(""),
+    guest_id_number: str = Form(""),
+    purpose: str = Form("visit"),
+    vehicle_plate: str = Form(""),
+    vehicle_type: str = Form("none"),
+    visiting_house_id: str = Form(""),
+    approved_by: str = Form("security"),
+    notes: str = Form(""),
+    status: str = Form("inside"),
+    max_duration_hours: str = Form("0"),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.guest.interface import guest_usecase
+    guest_usecase.update(
+        guest_id=id, guest_name=guest_name, guest_phone=guest_phone,
+        guest_id_number=guest_id_number, purpose=purpose,
+        vehicle_plate=vehicle_plate, vehicle_type=vehicle_type,
+        visiting_house_id=visiting_house_id, approved_by=approved_by,
+        notes=notes, status=status,
+        max_duration_hours=int(max_duration_hours) if max_duration_hours.isdigit() else 0,
+    )
+    return RedirectResponse(url="/admin/guests?msg=Guest+updated", status_code=303)
+
+
+@router.post("/guests/{id}/checkout")
+def guests_checkout(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.guest.interface import guest_usecase
+    guest_usecase.checkout(id)
+    return RedirectResponse(url="/admin/guests?msg=Guest+checked+out", status_code=303)
+
+
+@router.post("/guests/{id}/delete")
+def guests_delete(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.guest.interface import guest_usecase
+    guest_usecase.delete(id)
+    return RedirectResponse(url="/admin/guests?msg=Guest+deleted", status_code=303)
+
+
+# ==================== DUES CRUD ====================
+
+@router.get("/dues/create", response_class=HTMLResponse)
+def dues_create_form(request: Request):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.family.interface import family_usecase
+    families, _, _, _ = family_usecase.list(page=1, per_page=200)
+    return render("dues/form.html", due=None, families=[{"_id": f.id, "head_name": f.head_name} for f in families])
+
+
+@router.post("/dues/create")
+def dues_create(
+    request: Request,
+    family_id: str = Form(""),
+    period: str = Form(""),
+    type: str = Form("monthly"),
+    amount: str = Form("0"),
+    paid_amount: str = Form("0"),
+    status: str = Form("unpaid"),
+    payment_method: str = Form(""),
+    collector_name: str = Form(""),
+    notes: str = Form(""),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.due.interface import due_usecase
+    due_usecase.create(
+        family_id=family_id, period=period, type=type,
+        amount=int(amount) if amount.isdigit() else 0,
+        paid_amount=int(paid_amount) if paid_amount.isdigit() else 0,
+        status=status, payment_method=payment_method,
+        collector_name=collector_name, notes=notes,
+    )
+    return RedirectResponse(url="/admin/dues?msg=Due+created", status_code=303)
+
 
 @router.get("/dues/{id}", response_class=HTMLResponse)
-def dues_detail(request: Request, id: str):
+def dues_edit_form(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
     from usecases.due.interface import due_usecase
+    from usecases.family.interface import family_usecase
     due = due_usecase.find_by_id(id)
     if not due:
         return RedirectResponse(url="/admin/dues", status_code=303)
-    return render("dues/detail.html", due={"_id": due.id, **due_usecase.serialize(due)})
+    families, _, _, _ = family_usecase.list(page=1, per_page=200)
+    return render("dues/form.html", due={"_id": due.id, **due_usecase.serialize(due)}, families=[{"_id": f.id, "head_name": f.head_name} for f in families])
 
 
-# ==================== EVENTS (Detail only) ====================
+@router.post("/dues/{id}")
+def dues_update(
+    request: Request,
+    id: str,
+    family_id: str = Form(""),
+    period: str = Form(""),
+    type: str = Form("monthly"),
+    amount: str = Form("0"),
+    paid_amount: str = Form("0"),
+    status: str = Form("unpaid"),
+    payment_method: str = Form(""),
+    collector_name: str = Form(""),
+    notes: str = Form(""),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.due.interface import due_usecase
+    due_usecase.update(
+        due_id=id, family_id=family_id, period=period, type=type,
+        amount=int(amount) if amount.isdigit() else 0,
+        paid_amount=int(paid_amount) if paid_amount.isdigit() else 0,
+        status=status, payment_method=payment_method,
+        collector_name=collector_name, notes=notes,
+    )
+    return RedirectResponse(url="/admin/dues?msg=Due+updated", status_code=303)
+
+
+@router.post("/dues/{id}/delete")
+def dues_delete(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.due.interface import due_usecase
+    due_usecase.delete(id)
+    return RedirectResponse(url="/admin/dues?msg=Due+deleted", status_code=303)
+
+
+# ==================== EVENTS CRUD ====================
+
+@router.get("/events/create", response_class=HTMLResponse)
+def events_create_form(request: Request):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    return render("events/form.html", event=None)
+
+
+@router.post("/events/create")
+def events_create(
+    request: Request,
+    title: str = Form(""),
+    description: str = Form(""),
+    type: str = Form("announcement"),
+    location: str = Form(""),
+    start_date: str = Form(""),
+    end_date: str = Form(""),
+    organizer: str = Form(""),
+    target_audience: str = Form("all"),
+    is_mandatory: str = Form(""),
+    status: str = Form("upcoming"),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.event.interface import event_usecase
+    event_usecase.create(
+        title=title, description=description, type=type,
+        location=location, start_date=start_date, end_date=end_date,
+        organizer=organizer, target_audience=target_audience,
+        is_mandatory=is_mandatory == "true", status=status,
+    )
+    return RedirectResponse(url="/admin/events?msg=Event+created", status_code=303)
+
 
 @router.get("/events/{id}", response_class=HTMLResponse)
-def events_detail(request: Request, id: str):
+def events_edit_form(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
     from usecases.event.interface import event_usecase
     event = event_usecase.find_by_id(id)
     if not event:
         return RedirectResponse(url="/admin/events", status_code=303)
-    return render("events/detail.html", event={"_id": event.id, **event_usecase.serialize(event)})
+    return render("events/form.html", event={"_id": event.id, **event_usecase.serialize(event)})
 
 
-# ==================== SETTINGS (Update only) ====================
+@router.post("/events/{id}")
+def events_update(
+    request: Request,
+    id: str,
+    title: str = Form(""),
+    description: str = Form(""),
+    type: str = Form("announcement"),
+    location: str = Form(""),
+    start_date: str = Form(""),
+    end_date: str = Form(""),
+    organizer: str = Form(""),
+    target_audience: str = Form("all"),
+    is_mandatory: str = Form(""),
+    status: str = Form("upcoming"),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.event.interface import event_usecase
+    event_usecase.update(
+        event_id=id, title=title, description=description, type=type,
+        location=location, start_date=start_date, end_date=end_date,
+        organizer=organizer, target_audience=target_audience,
+        is_mandatory=is_mandatory == "true", status=status,
+    )
+    return RedirectResponse(url="/admin/events?msg=Event+updated", status_code=303)
+
+
+@router.post("/events/{id}/delete")
+def events_delete(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.event.interface import event_usecase
+    event_usecase.delete(id)
+    return RedirectResponse(url="/admin/events?msg=Event+deleted", status_code=303)
+
+
+# ==================== SETTINGS CRUD ====================
 
 @router.post("/settings/{id}")
-def settings_update(request: Request, id: str, value: str = Form("")):
+def settings_update_inline(request: Request, id: str, value: str = Form("")):
+    """Inline update from list page (backward compat)."""
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
     from usecases.setting.interface import setting_usecase
     setting_usecase.update(id, value=value)
     return RedirectResponse(url="/admin/settings?msg=Setting+updated", status_code=303)
+
+
+@router.get("/settings/create", response_class=HTMLResponse)
+def settings_create_form(request: Request):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    return render("settings/form.html", setting=None)
+
+
+@router.post("/settings/create")
+def settings_create(
+    request: Request,
+    key: str = Form(""),
+    key_custom: str = Form(""),
+    value: str = Form(""),
+    category: str = Form("general"),
+    description: str = Form(""),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.setting.interface import setting_usecase
+    actual_key = key_custom.strip() if key == "__custom__" or not key else key
+    if not actual_key:
+        return RedirectResponse(url="/admin/settings/create?msg=Key+is+required", status_code=303)
+    setting_usecase.create(key=actual_key, value=value, category=category, description=description)
+    return RedirectResponse(url="/admin/settings?msg=Setting+created", status_code=303)
+
+
+@router.get("/settings/{id}/edit", response_class=HTMLResponse)
+def settings_edit_form(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.setting.interface import setting_usecase
+    setting = setting_usecase.find_by_id(id)
+    if not setting:
+        return RedirectResponse(url="/admin/settings", status_code=303)
+    return render("settings/form.html", setting={"_id": setting.id, **setting_usecase.serialize(setting)})
+
+
+@router.post("/settings/{id}/edit")
+def settings_update_full(
+    request: Request,
+    id: str,
+    key: str = Form(""),
+    value: str = Form(""),
+    category: str = Form("general"),
+    description: str = Form(""),
+):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.setting.interface import setting_usecase
+    setting_usecase.update(id, key=key, value=value, category=category, description=description)
+    return RedirectResponse(url="/admin/settings?msg=Setting+updated", status_code=303)
+
+
+@router.post("/settings/{id}/delete")
+def settings_delete(request: Request, id: str):
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+    from usecases.setting.interface import setting_usecase
+    setting_usecase.delete(id)
+    return RedirectResponse(url="/admin/settings?msg=Setting+deleted", status_code=303)
 
 
 # ==================== ADMIN USERS CRUD ====================
@@ -652,7 +1011,9 @@ def admins_list(request: Request):
     search = request.query_params.get("q", "").strip()
     admins, page, total_pages, total = admin_usecase.list(search=search or None, page=page)
     return render("admins/list.html",
-        admins=[{"_id": a.get("_id"), **admin_usecase.serialize(a)} for a in admins])
+        admins=[{"_id": a.get("_id"), **admin_usecase.serialize(a)} for a in admins],
+        page=page, total_pages=total_pages, total=total, per_page=20,
+        base_url="/admin/admins", search=search)
 
 
 @router.get("/admins/create", response_class=HTMLResponse)

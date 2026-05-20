@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+{% set active = "events" %}
+
+{% block title %}{{ 'Edit' if event else 'Create' }} Event{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ 'Edit' if event else 'Create' }} Event</h2>
+
+  <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+      <input type="text" name="title" value="{{ event.title if event else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+      <textarea name="description" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ event.description if event else '' }}</textarea>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+        <select name="type" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="meeting" {{ 'selected' if event and event.type == 'meeting' else '' }}>Meeting</option>
+          <option value="social" {{ 'selected' if event and event.type == 'social' else '' }}>Social</option>
+          <option value="maintenance" {{ 'selected' if event and event.type == 'maintenance' else '' }}>Maintenance</option>
+          <option value="emergency" {{ 'selected' if event and event.type == 'emergency' else '' }}>Emergency</option>
+          <option value="announcement" {{ 'selected' if event and event.type == 'announcement' else '' }}>Announcement</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select name="status" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="upcoming" {{ 'selected' if event and event.status == 'upcoming' else '' }}>Upcoming</option>
+          <option value="ongoing" {{ 'selected' if event and event.status == 'ongoing' else '' }}>Ongoing</option>
+          <option value="completed" {{ 'selected' if event and event.status == 'completed' else '' }}>Completed</option>
+          <option value="cancelled" {{ 'selected' if event and event.status == 'cancelled' else '' }}>Cancelled</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+        <input type="datetime-local" name="start_date" value="{{ event.start_date.strftime('%Y-%m-%dT%H:%M') if event and event.start_date else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+        <input type="datetime-local" name="end_date" value="{{ event.end_date.strftime('%Y-%m-%dT%H:%M') if event and event.end_date else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+        <input type="text" name="location" value="{{ event.location if event else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Balai Warga">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Organizer</label>
+        <input type="text" name="organizer" value="{{ event.organizer if event else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="RT 05">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
+        <select name="target_audience" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="all" {{ 'selected' if event and event.target_audience == 'all' else '' }}>All</option>
+          <option value="block_a" {{ 'selected' if event and event.target_audience == 'block_a' else '' }}>Block A</option>
+          <option value="block_b" {{ 'selected' if event and event.target_audience == 'block_b' else '' }}>Block B</option>
+          <option value="block_c" {{ 'selected' if event and event.target_audience == 'block_c' else '' }}>Block C</option>
+        </select>
+      </div>
+      <div class="flex items-end pb-2">
+        <label class="inline-flex items-center gap-2">
+          <input type="checkbox" name="is_mandatory" value="true" {{ 'checked' if event and event.is_mandatory else '' }} class="rounded border-gray-300">
+          <span class="text-sm font-medium text-gray-700">Mandatory</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+      <a href="/admin/events" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+    </div>
+  </form>
+
+  {% if event %}
+  <form method="POST" action="/admin/events/{{ event._id }}/delete" class="mt-4" onsubmit="return confirm('Delete this event?')">
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
