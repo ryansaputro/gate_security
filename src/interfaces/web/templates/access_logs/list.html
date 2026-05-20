@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+{% set active = "access_logs" %}
+
+{% block title %}Access Logs{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold text-slate-800">Access Logs</h2>
+    <p class="text-slate-500 text-sm mt-0.5">Gate entry/exit history</p>
+  </div>
+  <div class="flex gap-2 items-center">
+    {% include "partials/export_buttons.html" %}
+  </div>
+</div>
+
+<!-- Search -->
+<div class="mb-4">
+  <form method="GET" action="/admin/access-logs" class="flex gap-2">
+    <div class="relative flex-1 max-w-sm">
+      <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" name="q" value="{{ search or '' }}" placeholder="Search plate, gate..." class="w-full border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+    </div>
+    <button type="submit" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700">Search</button>
+    {% if search %}
+    <a href="/admin/access-logs" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-200">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-100 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-50/80">
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Time</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Gate</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Direction</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Method</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Plate</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Confidence</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Result</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Reason</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for log in logs %}
+        <tr class="table-row hover:bg-slate-50/50">
+          <td class="px-5 py-3.5 text-xs text-slate-700">{{ log.timestamp.strftime('%d %b %Y %H:%M:%S') if log.timestamp else '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-700">{{ log.gate or '-' }}</td>
+          <td class="px-5 py-3.5">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              {{ 'bg-blue-50 text-blue-700' if log.direction == 'in' else 'bg-purple-50 text-purple-700' }}">
+              {{ log.direction or '-' }}
+            </span>
+          </td>
+          <td class="px-5 py-3.5 text-slate-600">{{ log.method or '-' }}</td>
+          <td class="px-5 py-3.5 font-mono text-slate-700">{{ log.plate_number or '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-600">{{ '%.0f%%'|format(log.confidence * 100) if log.confidence else '-' }}</td>
+          <td class="px-5 py-3.5">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              {{ 'bg-emerald-50 text-emerald-700' if log.result == 'granted' else 'bg-red-50 text-red-700' }}">
+              {{ log.result or '-' }}
+            </span>
+          </td>
+          <td class="px-5 py-3.5 text-xs text-slate-500">{{ log.reason or '-' }}</td>
+        </tr>
+        {% endfor %}
+        {% if not logs %}
+        <tr><td colspan="8" class="px-5 py-12 text-center text-slate-400">{{ 'No results for "' + search + '"' if search else 'No access logs found' }}</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/pagination.html" %}
+{% endblock %}

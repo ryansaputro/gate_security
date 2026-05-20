@@ -1,0 +1,35 @@
+{% if total > 0 %}
+{% set q_param = '&q=' + search if search else '' %}
+{% set pp_param = '&per_page=' + per_page|string if per_page != 20 else '' %}
+<div class="flex items-center justify-between mt-4 px-5 py-3 bg-white border border-slate-100 rounded-xl">
+  <div class="flex items-center gap-4">
+    <span class="text-sm text-slate-500">
+      <span class="font-medium text-slate-700">{{ ((page - 1) * per_page) + 1 }}-{{ [page * per_page, total] | min }}</span> of {{ total }}
+    </span>
+    <form method="GET" action="{{ base_url }}" class="flex items-center">
+      {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
+      <select name="per_page" onchange="this.form.submit()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 cursor-pointer">
+        <option value="10" {{ 'selected' if per_page == 10 else '' }}>10 / page</option>
+        <option value="20" {{ 'selected' if per_page == 20 else '' }}>20 / page</option>
+        <option value="50" {{ 'selected' if per_page == 50 else '' }}>50 / page</option>
+        <option value="100" {{ 'selected' if per_page == 100 else '' }}>100 / page</option>
+      </select>
+    </form>
+  </div>
+  {% if total_pages > 1 %}
+  <div class="flex gap-1">
+    {% if page > 1 %}
+    <a href="{{ base_url }}?page={{ page - 1 }}{{ q_param }}{{ pp_param }}" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">←</a>
+    {% endif %}
+    {% for p in range(1, total_pages + 1) %}
+      {% if p >= page - 2 and p <= page + 2 %}
+      <a href="{{ base_url }}?page={{ p }}{{ q_param }}{{ pp_param }}" class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors {{ 'bg-indigo-600 text-white border border-indigo-600 shadow-sm' if p == page else 'border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300' }}">{{ p }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="{{ base_url }}?page={{ page + 1 }}{{ q_param }}{{ pp_param }}" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors">→</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}

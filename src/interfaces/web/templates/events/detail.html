@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% set active = "events" %}
+
+{% block title %}Event Detail{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">Event Detail</h2>
+    <a href="/admin/events" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 text-sm">← Back to List</a>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div>
+      <label class="block text-xs font-medium text-gray-500 uppercase">Title</label>
+      <p class="text-gray-900 text-lg font-semibold">{{ event.title }}</p>
+    </div>
+
+    {% if event.description %}
+    <div>
+      <label class="block text-xs font-medium text-gray-500 uppercase">Description</label>
+      <p class="text-gray-900">{{ event.description }}</p>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Type</label>
+        <p class="text-gray-900">{{ event.type or '-' }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Status</label>
+        <span class="px-2 py-0.5 rounded text-xs
+          {{ 'bg-blue-100 text-blue-700' if event.status == 'upcoming' else 'bg-green-100 text-green-700' if event.status == 'completed' else 'bg-orange-100 text-orange-700' if event.status == 'ongoing' else 'bg-gray-100 text-gray-600' }}">
+          {{ event.status }}
+        </span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Start Date</label>
+        <p class="text-gray-900">{{ event.start_date.strftime('%d/%m/%Y %H:%M') if event.start_date else '-' }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">End Date</label>
+        <p class="text-gray-900">{{ event.end_date.strftime('%d/%m/%Y %H:%M') if event.end_date else '-' }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Location</label>
+        <p class="text-gray-900">{{ event.location or '-' }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Organizer</label>
+        <p class="text-gray-900">{{ event.organizer or '-' }}</p>
+      </div>
+    </div>
+
+    {% if event.target_audience %}
+    <div>
+      <label class="block text-xs font-medium text-gray-500 uppercase">Target Audience</label>
+      <p class="text-gray-900">{{ event.target_audience }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

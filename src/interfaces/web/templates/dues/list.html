@@ -1,0 +1,99 @@
+{% extends "layout.html" %}
+{% set active = "dues" %}
+
+{% block title %}Dues (Iuran){% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold text-slate-800">Dues (Iuran)</h2>
+    <p class="text-slate-500 text-sm mt-0.5">Monthly fee tracking</p>
+  </div>
+  <div class="flex gap-2 items-center">
+    {% include "partials/export_buttons.html" %}
+  </div>
+</div>
+
+<!-- Search -->
+<div class="mb-4">
+  <form method="GET" action="/admin/dues" class="flex gap-2">
+    <div class="relative flex-1 max-w-sm">
+      <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" name="q" value="{{ search or '' }}" placeholder="Search period, type..." class="w-full border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+    </div>
+    <button type="submit" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700">Search</button>
+    {% if search %}
+    <a href="/admin/dues" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-200">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Status Filter -->
+<div class="mb-4 flex flex-wrap gap-2 items-center">
+  <a href="/admin/dues" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ 'bg-indigo-600 text-white' if not status_filter else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">All</a>
+  <a href="/admin/dues?status=unpaid{{ '&month=' + month_filter if month_filter else '' }}" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ 'bg-red-600 text-white' if status_filter == 'unpaid' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">Unpaid</a>
+  <a href="/admin/dues?status=overdue{{ '&month=' + month_filter if month_filter else '' }}" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ 'bg-orange-600 text-white' if status_filter == 'overdue' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">Overdue</a>
+  <a href="/admin/dues?status=partial{{ '&month=' + month_filter if month_filter else '' }}" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ 'bg-amber-600 text-white' if status_filter == 'partial' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">Partial</a>
+  <a href="/admin/dues?status=paid{{ '&month=' + month_filter if month_filter else '' }}" class="px-3 py-1.5 rounded-lg text-sm font-medium {{ 'bg-emerald-600 text-white' if status_filter == 'paid' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">Paid</a>
+
+  <span class="text-slate-300 mx-1">|</span>
+
+  <form method="GET" action="/admin/dues" class="flex items-center gap-2">
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <input type="month" name="month" value="{{ month_filter or '' }}" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="this.form.submit()">
+    {% if month_filter %}
+    <a href="/admin/dues{{ '?status=' + status_filter if status_filter else '' }}" class="text-xs text-slate-500 hover:text-slate-700">✕ Clear month</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-100 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-50/80">
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Kepala Keluarga</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Period</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Paid</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Due Date</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Method</th>
+          <th class="px-5 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for due in dues %}
+        <tr class="table-row hover:bg-slate-50/50">
+          <td class="px-5 py-3.5 font-semibold text-slate-800">{{ due.family_head_name or '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-700">{{ due.period or ('%04d-%02d' % (due.year, due.month) if due.year and due.month else '-') }}</td>
+          <td class="px-5 py-3.5 text-slate-600">{{ due.type or '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-700">Rp {{ '{:,.0f}'.format(due.amount) if due.amount else '0' }}</td>
+          <td class="px-5 py-3.5 text-slate-600">Rp {{ '{:,.0f}'.format(due.paid_amount) if due.paid_amount else '0' }}</td>
+          <td class="px-5 py-3.5 text-slate-600">{{ due.due_date.strftime('%d/%m/%Y') if due.due_date else '-' }}</td>
+          <td class="px-5 py-3.5">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              {{ 'bg-emerald-50 text-emerald-700' if due.status == 'paid' else 'bg-amber-50 text-amber-700' if due.status == 'partial' else 'bg-red-50 text-red-700' }}">
+              {{ due.status or 'unpaid' }}
+            </span>
+          </td>
+          <td class="px-5 py-3.5 text-slate-600">{{ due.payment_method or '-' }}</td>
+          <td class="px-5 py-3.5 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <a href="/admin/dues/{{ due._id }}" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors" title="View">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not dues %}
+        <tr><td colspan="9" class="px-5 py-12 text-center text-slate-400">{{ 'No results for "' + search + '"' if search else 'No dues found' }}</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/pagination.html" %}
+{% endblock %}

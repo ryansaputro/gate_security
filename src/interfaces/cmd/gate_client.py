@@ -77,18 +77,18 @@ def validate_and_open(plate: str, confidence: float, votes: int):
             _trigger_gate_open()
             _last_open_time = time.time()
             _last_plate = plate
-            return "granted"
+            return ("granted", "Gate opened")
         else:
-            reason = data.get("message", "denied")
+            reason = data.get("data", {}).get("reason") or data.get("message", "denied")
             print(f"  ❌ DENIED - {plate}: {reason}")
-            return "denied"
+            return ("denied", reason)
 
     except requests.exceptions.ConnectionError:
         print(f"  ⚠️  API not reachable ({API_BASE})")
-        return "error"
+        return ("error", f"API not reachable ({API_BASE})")
     except Exception as e:
         print(f"  ⚠️  Error: {e}")
-        return "error"
+        return ("error", str(e))
 
 
 def _trigger_gate_open():

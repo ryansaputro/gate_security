@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+{% set active = "vehicles" %}
+
+{% block title %}{{ 'Edit' if vehicle else 'Create' }} Vehicle{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ 'Edit' if vehicle else 'Create' }} Vehicle</h2>
+
+  <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Plate Number</label>
+      <input type="text" name="plate_number" value="{{ vehicle.plate_number if vehicle else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required placeholder="B 1234 XYZ">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+      <select name="type" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="car" {{ 'selected' if vehicle and vehicle.type == 'car' else '' }}>Car</option>
+        <option value="motorcycle" {{ 'selected' if vehicle and vehicle.type == 'motorcycle' else '' }}>Motorcycle</option>
+      </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+        <input type="text" name="brand" value="{{ vehicle.brand if vehicle else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Toyota">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+        <input type="text" name="model" value="{{ vehicle.model if vehicle else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Avanza">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+        <input type="text" name="color" value="{{ vehicle.color if vehicle else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Silver">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Year</label>
+        <input type="number" name="year" value="{{ vehicle.year if vehicle else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="2020">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Family</label>
+      <select name="family_id" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">-- No family --</option>
+        {% for f in families %}
+        <option value="{{ f._id }}" {{ 'selected' if vehicle and vehicle.family_id == f._id else '' }}>{{ f.head_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" name="is_active" value="true" {{ 'checked' if not vehicle or vehicle.is_active else '' }} class="rounded border-gray-300">
+        <span class="text-sm font-medium text-gray-700">Active</span>
+      </label>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+      <a href="/admin/vehicles" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+      {% if vehicle %}
+      <form method="POST" action="/admin/vehicles/{{ vehicle._id }}/delete" class="ml-auto" onsubmit="return confirm('Delete this vehicle?')">
+        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

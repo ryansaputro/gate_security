@@ -191,6 +191,16 @@ def main():
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
+    # Publish status to shared state (for web Live Monitor)
+    try:
+        from shared_state import publish_frame, publish_detection, publish_status
+        publish_status(True, device=str(source), model=args.model or "", interval=args.interval)
+        _has_shared_state = True
+        print("  [shared_state] Connected — web Live Monitor will receive data")
+    except ImportError as e:
+        _has_shared_state = False
+        print(f"  [shared_state] Not available ({e}) — web Live Monitor disabled")
+
     print(f"Interval: {args.interval}s | Mode: {'GUI' if use_gui else 'headless'} | Ctrl+C to quit")
     last_detect = 0
     plate_text, plate_confidence = "", 0.0
@@ -205,6 +215,10 @@ def main():
 
             now = time.time()
 
+            # Publish frame to shared state (for web MJPEG stream)
+            if _has_shared_state:
+                publish_frame(frame)
+
             if now - last_detect >= args.interval:
                 last_detect = now
                 t_start = time.time()
@@ -214,11 +228,38 @@ def main():
                         plate_text, plate_confidence = text, conf
                         dt = time.time() - t_start
                         print(f"  [{conf:.0%}] {text} (votes: {best_plates[text]}) [{dt:.2f}s]")
+
+                        # Always publish detection to shared state (same as CMD log)
+                        if _has_shared_state:
+                            publish_detection(
+                                plate=text, confidence=conf,
+                                votes=best_plates[text],
+                                granted=None, reason=f"{dt:.2f}s",
+                                bbox=(x1, y1, x2, y2),
+                            )
+
+                        # Gate validation (separate from detection publishing)
                         try:
                             from interfaces.cmd.gate_client import validate_and_open
-                            validate_and_open(plate_text, plate_confidence, best_plates[text])
-                        except Exception:
-                            pass
+                            result = validate_and_open(plate_text, plate_confidence, best_plates[text])
+                            if result is not None and _has_shared_state:
+                                if isinstance(result, tuple) and len(result) == 2:
+                                    status, reason = result
+                                else:
+                                    # Backward compat: old string return
+                                    status = str(result)
+                                    reason = str(result)
+                                print(f"  [web→] {status}: {reason}")
+                                publish_detection(
+                                    plate=text, confidence=conf,
+                                    votes=best_plates[text],
+                                    granted=(status == "granted"),
+                                    reason=reason,
+                                    bbox=(x1, y1, x2, y2),
+                                )
+                        except Exception as e:
+                            print(f"  [gate_client error] {e}")
+
                 if len(best_plates) > 10:
                     best_plates = dict(sorted(best_plates.items(), key=lambda x: x[1], reverse=True)[:5])
 
@@ -243,6 +284,9 @@ def main():
 
     except KeyboardInterrupt:
         print("\n  Stopped.")
+
+    if _has_shared_state:
+        publish_status(False)
 
     (grabber.release() if is_stream else cap.release())
     if use_gui:

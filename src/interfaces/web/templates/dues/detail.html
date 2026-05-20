@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+{% set active = "dues" %}
+
+{% block title %}Due Detail{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">Due Detail</h2>
+    <a href="/admin/dues" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 text-sm">← Back to List</a>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Period</label>
+        <p class="text-gray-900 font-semibold">{{ due.period or ('%04d-%02d' % (due.year, due.month)) }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Type</label>
+        <p class="text-gray-900">{{ due.type or '-' }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Amount</label>
+        <p class="text-gray-900 font-semibold">Rp {{ '{:,.0f}'.format(due.amount or 0) }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Paid Amount</label>
+        <p class="text-gray-900">Rp {{ '{:,.0f}'.format(due.paid_amount or 0) }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Status</label>
+        <span class="px-2 py-0.5 rounded text-xs
+          {{ 'bg-green-100 text-green-700' if due.status == 'paid' else 'bg-red-100 text-red-700' if due.status == 'overdue' else 'bg-yellow-100 text-yellow-700' }}">
+          {{ due.status }}
+        </span>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Payment Method</label>
+        <p class="text-gray-900">{{ due.payment_method or '-' }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">Family ID</label>
+        <p class="text-gray-900 font-mono text-sm">{{ due.family_id or '-' }}</p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 uppercase">House ID</label>
+        <p class="text-gray-900 font-mono text-sm">{{ due.house_id or '-' }}</p>
+      </div>
+    </div>
+
+    {% if due.receipt_number %}
+    <div>
+      <label class="block text-xs font-medium text-gray-500 uppercase">Receipt Number</label>
+      <p class="text-gray-900 font-mono">{{ due.receipt_number }}</p>
+    </div>
+    {% endif %}
+
+    {% if due.paid_at %}
+    <div>
+      <label class="block text-xs font-medium text-gray-500 uppercase">Paid At</label>
+      <p class="text-gray-900">{{ due.paid_at.strftime('%d/%m/%Y %H:%M') if due.paid_at else '-' }}</p>
+    </div>
+    {% endif %}
+
+    {% if due.notes %}
+    <div>
+      <label class="block text-xs font-medium text-gray-500 uppercase">Notes</label>
+      <p class="text-gray-900">{{ due.notes }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

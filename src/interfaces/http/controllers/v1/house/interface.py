@@ -1,15 +1,13 @@
 """
-House Controller Interface.
+House Controller Interface - uses HouseUsecase for all operations.
 """
 
-from drivers.mongo.connection import Mongo
-from repositories.house import HouseRepository
+from usecases.house.interface import house_usecase
 
 
 class HouseController:
-    def _get_repo(self) -> HouseRepository:
-        mongo = Mongo()
-        return HouseRepository(mongo.get_db())
+    def __init__(self):
+        self.uc = house_usecase
 
 
 from interfaces.http.controllers.v1.house.list import list_houses  # noqa

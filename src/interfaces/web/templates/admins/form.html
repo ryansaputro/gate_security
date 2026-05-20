@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% set active = "admins" %}
+
+{% block title %}{{ 'Edit' if admin_user else 'Create' }} Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ 'Edit' if admin_user else 'Create' }} Admin</h2>
+
+  <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+      <input type="text" name="username" value="{{ admin_user.username if admin_user else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required {{ 'readonly' if admin_user else '' }}>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+      <input type="text" name="name" value="{{ admin_user.name if admin_user else '' }}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Password {{ '(leave blank to keep current)' if admin_user else '' }}</label>
+      <input type="password" name="password" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" {{ '' if admin_user else 'required' }}>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+      <select name="role" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="admin" {{ 'selected' if admin_user and admin_user.role == 'admin' else '' }}>Admin</option>
+        <option value="superadmin" {{ 'selected' if admin_user and admin_user.role == 'superadmin' else '' }}>Super Admin</option>
+        <option value="security" {{ 'selected' if admin_user and admin_user.role == 'security' else '' }}>Security</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="inline-flex items-center gap-2">
+        <input type="checkbox" name="is_active" value="true" {{ 'checked' if not admin_user or admin_user.is_active else '' }} class="rounded border-gray-300">
+        <span class="text-sm font-medium text-gray-700">Active</span>
+      </label>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+      <a href="/admin/admins" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+      {% if admin_user %}
+      <form method="POST" action="/admin/admins/{{ admin_user._id }}/delete" class="ml-auto" onsubmit="return confirm('Delete this admin?')">
+        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

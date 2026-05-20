@@ -35,16 +35,16 @@ fix-gui:
 	pip3 install --break-system-packages --force-reinstall numpy==1.26.4 opencv-python==4.10.0.84
 
 local-cmd-v3:
-	python3 src/live_paddle_ocr.py --gui
+	python3 src/live_paddle_ocr.py $(GUI)
 
 local-cmd-v3-headless:
 	python3 src/live_paddle_ocr.py
 
 local-cmd-v3-model:
-	python3 src/live_paddle_ocr.py --gui --model "$(MODEL)" --device "$(or $(DEVICE),0)"
+	python3 src/live_paddle_ocr.py $(GUI) --model "$(MODEL)" --device "$(or $(DEVICE),0)"
 
 local-cmd-v3-stream:
-	python3 src/live_paddle_ocr.py --gui --model "$(MODEL)" --device "$(DEVICE)" --interval $(or $(INTERVAL),1)
+	python3 src/live_paddle_ocr.py $(GUI) --model "$(MODEL)" --device "$(DEVICE)" --interval $(or $(INTERVAL),1)
 
 local-cmd-v3-image:
 	python3 src/live_paddle_ocr.py --model "$(MODEL)" --image "$(IMAGE)"
@@ -62,6 +62,9 @@ seed:
 seed-api-keys:
 	python3 src/scripts/seed_api_key.py
 
+seed-admins:
+	python3 src/scripts/seed_admins.py
+
 help:
 	@echo "Available commands:"
 	@echo "  make local-http              Start HTTP API server (port 3000)"
@@ -69,7 +72,8 @@ help:
 	@echo "  make local-cmd-v2            Start live OCR v2 (webcam, YOLO+EasyOCR)"
 	@echo "  make local-cmd-v2-model MODEL=models/plate_best.pt"
 	@echo "  make local-cmd-v2-stream MODEL=... DEVICE=rtsp://... INTERVAL=1"
-	@echo "  make local-cmd-v3            Start live OCR v3 (webcam, YOLO+PaddleOCR) [FASTEST]"
+	@echo "  make local-cmd-v3            Start live OCR v3 (headless, YOLO+PaddleOCR) [FASTEST]"
+	@echo "  make local-cmd-v3 GUI=--gui  Start live OCR v3 with OpenCV GUI window"
 	@echo "  make local-cmd-v3-model MODEL=models/plate_best.pt"
 	@echo "  make local-cmd-v3-stream MODEL=... DEVICE=rtsp://... INTERVAL=1"
 	@echo "  make local-cmd-v3-image MODEL=... IMAGE=/tmp/plate.png"

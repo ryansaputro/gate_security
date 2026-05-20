@@ -1,0 +1,322 @@
+{% extends "layout.html" %}
+{% block title %}Live Monitor{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Live Monitor</h1>
+      <p class="text-sm text-slate-500 mt-1">Realtime camera stream & plate detection from OCR process</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="status-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+        <span id="status-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+        <span id="status-text">Checking...</span>
+      </span>
+      <button id="btn-gate-open" onclick="openGate()" class="btn inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+        Open Gate
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Camera Stream -->
+    <div class="lg:col-span-2">
+      <div class="card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-700">Camera Feed</h2>
+          <div class="flex items-center gap-2">
+            <span id="ocr-info" class="text-xs text-slate-400"></span>
+            <button onclick="toggleStream()" id="btn-stream" class="text-xs px-3 py-1.5 rounded-md bg-brand text-white hover:bg-brand-dark">
+              Connect
+            </button>
+          </div>
+        </div>
+        <div class="relative bg-slate-900 aspect-video flex items-center justify-center">
+          <img id="camera-stream" class="w-full h-full object-contain hidden" alt="Camera Stream" />
+          <div id="stream-placeholder" class="text-center text-slate-400">
+            <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <p class="text-sm">Click "Connect" to view OCR camera stream</p>
+            <p class="text-xs mt-2 text-slate-500">Make sure <code class="bg-slate-700 px-1.5 py-0.5 rounded">make local-cmd-v3</code> is running</p>
+          </div>
+          <!-- Detection overlay -->
+          <div id="detection-overlay" class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent hidden">
+            <div class="flex items-center justify-between">
+              <div>
+                <span id="overlay-plate" class="text-xl font-bold text-white font-mono"></span>
+                <span id="overlay-confidence" class="ml-2 text-sm text-green-400"></span>
+              </div>
+              <span id="overlay-status" class="text-xs px-2 py-1 rounded-full"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detection Log Panel -->
+    <div class="lg:col-span-1">
+      <div class="card bg-white rounded-xl shadow-sm border border-slate-200 h-full flex flex-col">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-700">Detection Log</h2>
+          <div class="flex items-center gap-2">
+            <span id="log-count" class="text-xs text-slate-400">0 events</span>
+            <button onclick="clearLog()" class="text-xs text-slate-400 hover:text-red-500">Clear</button>
+          </div>
+        </div>
+        <div id="detection-log" class="flex-1 overflow-y-auto p-3 space-y-2 max-h-[500px]">
+          <div class="text-center text-slate-400 text-sm py-8">
+            <p>No detections yet</p>
+            <p class="text-xs mt-1">Waiting for OCR process detections...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="card bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">Detections</p>
+      <p id="stat-detections" class="text-2xl font-bold text-slate-800 mt-1">0</p>
+    </div>
+    <div class="card bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">Granted</p>
+      <p id="stat-granted" class="text-2xl font-bold text-green-600 mt-1">0</p>
+    </div>
+    <div class="card bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">Denied</p>
+      <p id="stat-denied" class="text-2xl font-bold text-red-600 mt-1">0</p>
+    </div>
+    <div class="card bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wide">Avg Confidence</p>
+      <p id="stat-confidence" class="text-2xl font-bold text-brand mt-1">-</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let streaming = false;
+let eventSource = null;
+let stats = { detections: 0, granted: 0, denied: 0, confidenceSum: 0 };
+
+// Check OCR process status on load
+checkStatus();
+setInterval(checkStatus, 5000);
+
+function checkStatus() {
+  fetch('/admin/live-monitor/status')
+    .then(r => r.json())
+    .then(data => {
+      const infoEl = document.getElementById('ocr-info');
+      if (data.running) {
+        setStatus('connected');
+        let info = `Device: ${data.device || '?'}`;
+        if (data.interval) info += ` | ${data.interval}s interval`;
+        infoEl.textContent = info;
+      } else {
+        if (!streaming) setStatus('disconnected');
+        infoEl.textContent = 'OCR process not running';
+      }
+    })
+    .catch(() => {});
+}
+
+function toggleStream() {
+  if (streaming) {
+    stopStream();
+  } else {
+    startStream();
+  }
+}
+
+function startStream() {
+  const img = document.getElementById('camera-stream');
+  const placeholder = document.getElementById('stream-placeholder');
+  const btn = document.getElementById('btn-stream');
+
+  // Start MJPEG stream (reads from shared_state, same data as local-cmd-v3)
+  img.src = `/admin/live-monitor/stream?t=${Date.now()}`;
+  img.classList.remove('hidden');
+  placeholder.classList.add('hidden');
+  btn.textContent = 'Disconnect';
+  btn.classList.remove('bg-brand');
+  btn.classList.add('bg-red-500');
+  streaming = true;
+
+  // Start SSE for detections
+  startSSE();
+}
+
+function stopStream() {
+  const img = document.getElementById('camera-stream');
+  const placeholder = document.getElementById('stream-placeholder');
+  const btn = document.getElementById('btn-stream');
+
+  img.src = '';
+  img.classList.add('hidden');
+  placeholder.classList.remove('hidden');
+  btn.textContent = 'Connect';
+  btn.classList.remove('bg-red-500');
+  btn.classList.add('bg-brand');
+  streaming = false;
+
+  stopSSE();
+}
+
+function startSSE() {
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource('/admin/live-monitor/events');
+
+  eventSource.onmessage = function(e) {
+    try {
+      const data = JSON.parse(e.data);
+      handleDetection(data);
+    } catch(err) {}
+  };
+
+  eventSource.onerror = function() {
+    setTimeout(() => {
+      if (streaming) startSSE();
+    }, 3000);
+  };
+}
+
+function stopSSE() {
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+}
+
+function handleDetection(data) {
+  stats.detections++;
+  stats.confidenceSum += data.confidence || 0;
+  if (data.granted === true) stats.granted++;
+  else if (data.granted === false) stats.denied++;
+
+  document.getElementById('stat-detections').textContent = stats.detections;
+  document.getElementById('stat-granted').textContent = stats.granted;
+  document.getElementById('stat-denied').textContent = stats.denied;
+  const avgConf = stats.confidenceSum / stats.detections;
+  document.getElementById('stat-confidence').textContent = `${(avgConf * 100).toFixed(0)}%`;
+
+  // Update overlay
+  const overlay = document.getElementById('detection-overlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('overlay-plate').textContent = data.plate;
+  document.getElementById('overlay-confidence').textContent = `${((data.confidence || 0) * 100).toFixed(0)}%`;
+  const statusEl = document.getElementById('overlay-status');
+  if (data.granted === true) {
+    statusEl.textContent = '✅ GATE OPEN';
+    statusEl.className = 'text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400';
+  } else if (data.granted === false) {
+    statusEl.textContent = `❌ ${data.reason || 'DENIED'}`;
+    statusEl.className = 'text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400';
+  } else {
+    statusEl.textContent = `${data.votes || 0} votes`;
+    statusEl.className = 'text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400';
+  }
+
+  addLogEntry(data);
+  setTimeout(() => { overlay.classList.add('hidden'); }, 5000);
+}
+
+function addLogEntry(data) {
+  const log = document.getElementById('detection-log');
+  if (stats.detections === 1) log.innerHTML = '';
+
+  const time = new Date(data.timestamp || Date.now()).toLocaleTimeString('id-ID');
+  const granted = data.granted;
+  const entry = document.createElement('div');
+
+  let borderClass, bgClass, textClass, statusIcon, statusLabel;
+  if (granted === true) {
+    borderClass = 'border-green-200'; bgClass = 'bg-green-50'; textClass = 'text-green-800';
+    statusIcon = '✅'; statusLabel = 'GATE OPEN';
+  } else if (granted === false) {
+    borderClass = 'border-red-200'; bgClass = 'bg-red-50'; textClass = 'text-red-800';
+    statusIcon = '❌'; statusLabel = 'DENIED';
+  } else {
+    borderClass = 'border-slate-200'; bgClass = 'bg-slate-50'; textClass = 'text-slate-800';
+    statusIcon = '🔍'; statusLabel = 'Detected';
+  }
+
+  // Match CMD format: [conf%] PLATE (votes: N) [time]
+  const confPct = ((data.confidence || 0) * 100).toFixed(0);
+  const votes = data.votes || 0;
+  const reason = data.reason || '';
+
+  entry.className = `p-3 rounded-lg border ${borderClass} ${bgClass} animate-fade-in`;
+  entry.innerHTML = `
+    <div class="flex items-center justify-between">
+      <span class="font-mono font-bold text-sm ${textClass}">[${confPct}%] ${data.plate}</span>
+      <span class="text-xs text-slate-500">${time}</span>
+    </div>
+    <div class="mt-1">
+      <span class="text-xs font-medium ${textClass}">${statusIcon} ${statusLabel}</span>
+      <span class="text-xs text-slate-500 ml-1">(votes: ${votes})</span>
+    </div>
+    ${reason ? `<div class="mt-1 text-xs ${granted === false ? 'text-red-600 font-medium' : 'text-slate-500'}">${reason}</div>` : ''}
+  `;
+  log.prepend(entry);
+
+  while (log.children.length > 50) log.removeChild(log.lastChild);
+  document.getElementById('log-count').textContent = `${Math.min(stats.detections, 50)} events`;
+}
+
+function clearLog() {
+  document.getElementById('detection-log').innerHTML = '<div class="text-center text-slate-400 text-sm py-8"><p>Log cleared</p></div>';
+  stats = { detections: 0, granted: 0, denied: 0, confidenceSum: 0 };
+  document.getElementById('stat-detections').textContent = '0';
+  document.getElementById('stat-granted').textContent = '0';
+  document.getElementById('stat-denied').textContent = '0';
+  document.getElementById('stat-confidence').textContent = '-';
+  document.getElementById('log-count').textContent = '0 events';
+}
+
+function openGate() {
+  const btn = document.getElementById('btn-gate-open');
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Opening...';
+
+  fetch('/admin/live-monitor/gate-open', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      Swal.fire({ toast: true, position: 'top-end', icon: data.status ? 'success' : 'error', title: data.message, showConfirmButton: false, timer: 3000 });
+    })
+    .catch(() => {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Failed to open gate', showConfirmButton: false, timer: 3000 });
+    })
+    .finally(() => {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg> Open Gate';
+      }, 2000);
+    });
+}
+
+function setStatus(state) {
+  const dot = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  const badge = document.getElementById('status-badge');
+  if (state === 'connected') {
+    dot.className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse';
+    text.textContent = 'OCR Running';
+    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 text-green-700';
+  } else {
+    dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+    text.textContent = 'OCR Offline';
+    badge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600';
+  }
+}
+
+window.addEventListener('beforeunload', () => { stopSSE(); });
+</script>
+
+<style>
+@keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+</style>
+{% endblock %}
