@@ -16,6 +16,9 @@ local-cmd-v2-stream:
 local-cron:
 	INTERFACE=CRON python3 src/main.py
 
+local-telegram:
+	INTERFACE=TELEGRAM python3 src/main.py
+
 local-cmd-stream:
 	INTERFACE=CMD python3 src/main.py -- --device "$(DEVICE)" --interval $(or $(INTERVAL),3)
 

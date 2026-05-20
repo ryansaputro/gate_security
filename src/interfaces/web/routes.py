@@ -1330,3 +1330,136 @@ def export_events(request: Request, format: str = "csv"):
         html += f"<tr><td>{e.get('title', '')}</td><td>{e.get('type', '')}</td><td>{start}</td><td>{e.get('location', '')}</td><td>{e.get('status', '')}</td></tr>"
     html += "</table></body></html>"
     return HTMLResponse(content=html, headers={"Content-Disposition": "attachment; filename=events.html"})
+
+
+# ==================== TELEGRAM BINDINGS ROUTES ====================
+
+@router.get("/telegram-bindings", response_class=HTMLResponse)
+def telegram_bindings_list(request: Request):
+    """List all telegram bindings (pending/approved/rejected)."""
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    db = get_db()
+    status_filter = request.query_params.get("status", "pending")
+
+    query = {}
+    if status_filter and status_filter != "all":
+        query["status"] = status_filter
+
+    bindings = list(db.telegram_bindings.find(query).sort("requestedAt", -1))
+
+    # Enrich with family + house data
+    for b in bindings:
+        b["_id_str"] = str(b["_id"])
+        family = db.families.find_one({"_id": ObjectId(b["familyId"])}) if b.get("familyId") else None
+        if family:
+            b["family_name"] = family.get("headName", "-")
+            house = db.houses.find_one({"_id": ObjectId(family["houseId"])}) if family.get("houseId") else None
+            if house:
+                b["house_label"] = f"Blok {house.get('block', '')} No.{house.get('houseNumber', '')}"
+            else:
+                b["house_label"] = "-"
+        else:
+            b["family_name"] = "-"
+            b["house_label"] = "-"
+
+    return render(
+        "telegram_bindings/list.html",
+        active="telegram_bindings",
+        user=user,
+        bindings=bindings,
+        status_filter=status_filter,
+    )
+
+
+@router.post("/telegram-bindings/{binding_id}/approve")
+def telegram_binding_approve(request: Request, binding_id: str):
+    """Approve a pending telegram binding."""
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    db = get_db()
+    binding = db.telegram_bindings.find_one({"_id": ObjectId(binding_id), "status": "pending"})
+    if not binding:
+        return RedirectResponse(url="/admin/telegram-bindings?status=pending&msg=Binding+not+found+or+already+processed", status_code=303)
+
+    db.telegram_bindings.update_one(
+        {"_id": ObjectId(binding_id)},
+        {"$set": {
+            "status": "approved",
+            "approvedAt": datetime.utcnow(),
+            "approvedBy": user["username"],
+        }},
+    )
+
+    # Send Telegram notification to user
+    _notify_telegram_user(binding["telegramId"], "approved")
+
+    return RedirectResponse(url="/admin/telegram-bindings?status=pending&msg=Binding+approved", status_code=303)
+
+
+@router.post("/telegram-bindings/{binding_id}/reject")
+def telegram_binding_reject(request: Request, binding_id: str):
+    """Reject a pending telegram binding."""
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    db = get_db()
+    binding = db.telegram_bindings.find_one({"_id": ObjectId(binding_id), "status": "pending"})
+    if not binding:
+        return RedirectResponse(url="/admin/telegram-bindings?status=pending&msg=Binding+not+found+or+already+processed", status_code=303)
+
+    db.telegram_bindings.update_one(
+        {"_id": ObjectId(binding_id)},
+        {"$set": {
+            "status": "rejected",
+            "approvedAt": datetime.utcnow(),
+            "approvedBy": user["username"],
+        }},
+    )
+
+    # Send Telegram notification to user
+    _notify_telegram_user(binding["telegramId"], "rejected")
+
+    return RedirectResponse(url="/admin/telegram-bindings?status=pending&msg=Binding+rejected", status_code=303)
+
+
+def _notify_telegram_user(telegram_id: int, status: str):
+    """Send notification to Telegram user after approve/reject. Fire-and-forget."""
+    import threading
+    import requests as req
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        return
+
+    if status == "approved":
+        text = "Pendaftaran Anda telah disetujui! Sekarang bisa gunakan /tagihan untuk cek tagihan."
+    else:
+        text = "Pendaftaran Anda ditolak oleh admin. Hubungi admin atau coba /daftar lagi."
+
+    def _send():
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            req.post(url, json={"chat_id": telegram_id, "text": text}, timeout=10)
+        except Exception as e:
+            print(f"Failed to notify Telegram user {telegram_id}: {e}")
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+@router.post("/telegram-bindings/{binding_id}/delete")
+def telegram_binding_delete(request: Request, binding_id: str):
+    """Delete a telegram binding."""
+    user = require_auth(request)
+    if not user:
+        return RedirectResponse(url="/admin/login", status_code=303)
+
+    db = get_db()
+    db.telegram_bindings.delete_one({"_id": ObjectId(binding_id)})
+
+    return RedirectResponse(url="/admin/telegram-bindings?status=all&msg=Binding+deleted", status_code=303)

@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+{% set active = "telegram_bindings" %}
+
+{% block title %}Telegram Bindings{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold text-slate-800">Telegram Bindings</h2>
+    <p class="text-slate-500 text-sm mt-0.5">Manage Telegram account registrations</p>
+  </div>
+</div>
+
+<!-- Status Filter Tabs -->
+<div class="mb-4 flex gap-2">
+  <a href="/admin/telegram-bindings?status=pending"
+     class="px-4 py-2 rounded-lg text-sm font-medium {{ 'bg-amber-100 text-amber-800' if status_filter == 'pending' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+    ⏳ Pending
+  </a>
+  <a href="/admin/telegram-bindings?status=approved"
+     class="px-4 py-2 rounded-lg text-sm font-medium {{ 'bg-emerald-100 text-emerald-800' if status_filter == 'approved' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+    ✅ Approved
+  </a>
+  <a href="/admin/telegram-bindings?status=rejected"
+     class="px-4 py-2 rounded-lg text-sm font-medium {{ 'bg-red-100 text-red-800' if status_filter == 'rejected' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+    ❌ Rejected
+  </a>
+  <a href="/admin/telegram-bindings?status=all"
+     class="px-4 py-2 rounded-lg text-sm font-medium {{ 'bg-indigo-100 text-indigo-800' if status_filter == 'all' else 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+    All
+  </a>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-100 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-50/80">
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Telegram</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Username</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Family</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">House</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+          <th class="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Requested</th>
+          <th class="px-5 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for b in bindings %}
+        <tr class="table-row hover:bg-slate-50/50">
+          <td class="px-5 py-3.5 text-slate-800 font-medium">{{ b.telegramFirstName or '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-600 font-mono text-xs">{{ ('@' + b.telegramUsername) if b.telegramUsername else '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-700">{{ b.family_name or '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-600">{{ b.house_label or '-' }}</td>
+          <td class="px-5 py-3.5">
+            {% if b.status == 'pending' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Pending</span>
+            {% elif b.status == 'approved' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">Approved</span>
+            {% elif b.status == 'rejected' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">Rejected</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3.5 text-slate-600 text-xs">{{ b.requestedAt.strftime('%d %b %Y %H:%M') if b.requestedAt else '-' }}</td>
+          <td class="px-5 py-3.5 text-right">
+            {% if b.status == 'pending' %}
+            <div class="flex items-center justify-end gap-1">
+              <form method="POST" action="/admin/telegram-bindings/{{ b._id_str }}/approve" class="inline">
+                <button type="submit" class="btn bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700" onclick="return confirm('Approve this binding?')">
+                  Approve
+                </button>
+              </form>
+              <form method="POST" action="/admin/telegram-bindings/{{ b._id_str }}/reject" class="inline">
+                <button type="submit" class="btn bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-700" onclick="return confirm('Reject this binding?')">
+                  Reject
+                </button>
+              </form>
+              <form method="POST" action="/admin/telegram-bindings/{{ b._id_str }}/delete" class="inline">
+                <button type="submit" class="btn bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-700" onclick="return confirm('Delete this binding?')">
+                  Delete
+                </button>
+              </form>
+            </div>
+            {% elif b.status == 'approved' %}
+            <div class="flex items-center justify-end gap-1">
+              <span class="text-xs text-slate-400 mr-2">by {{ b.approvedBy or '-' }}</span>
+              <form method="POST" action="/admin/telegram-bindings/{{ b._id_str }}/delete" class="inline">
+                <button type="submit" class="btn bg-slate-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-600" onclick="return confirm('Delete this binding? User will need to re-register.')">
+                  Delete
+                </button>
+              </form>
+            </div>
+            {% elif b.status == 'rejected' %}
+            <div class="flex items-center justify-end gap-1">
+              <span class="text-xs text-slate-400 mr-2">by {{ b.approvedBy or '-' }}</span>
+              <form method="POST" action="/admin/telegram-bindings/{{ b._id_str }}/delete" class="inline">
+                <button type="submit" class="btn bg-slate-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-slate-600" onclick="return confirm('Delete this binding?')">
+                  Delete
+                </button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not bindings %}
+        <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400">No {{ status_filter }} bindings found</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

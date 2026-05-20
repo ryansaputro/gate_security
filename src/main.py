@@ -22,17 +22,36 @@ def main():
     if app_interface == "HTTP":
         import uvicorn
         port = int(os.getenv("HTTP_PORT", "3000"))
+
+        # Start Telegram bot in background if token is set
+        telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        if telegram_token:
+            try:
+                import threading
+                from interfaces.telegram.launch import launch as launch_telegram
+                bot_thread = threading.Thread(target=launch_telegram, daemon=True)
+                bot_thread.start()
+                print(f"🤖 Telegram bot started in background")
+            except ImportError:
+                print("⚠️  python-telegram-bot not installed. Skipping Telegram bot.")
+                print("   Install with: pip3 install --break-system-packages python-telegram-bot")
+
+        # IMPORTANT: reload=False when telegram bot is running to avoid duplicate bot instances
+        use_reload = os.getenv("ENVIRONMENT", "dev") != "production" and not telegram_token
         uvicorn.run(
             "interfaces.http.launch:app",
             host="0.0.0.0",
             port=port,
-            reload=os.getenv("ENVIRONMENT", "dev") != "production",
+            reload=use_reload,
         )
     elif app_interface == "CMD":
         from interfaces.cmd.launch import launch
         launch()
     elif app_interface == "CRON":
         from interfaces.cron.launch import launch
+        launch()
+    elif app_interface == "TELEGRAM":
+        from interfaces.telegram.launch import launch
         launch()
     else:
         print(f"Interface not found: {app_interface}")

@@ -17,3 +17,6 @@ python-multipart>=0.0.6
 
 # Scheduler
 APScheduler>=3.10.0
+
+# Telegram Bot
+python-telegram-bot>=21.0
