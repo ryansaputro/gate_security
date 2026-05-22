@@ -56,7 +56,7 @@ class AdminUsecase:
         return self.collection.find_one({"_id": ObjectId(admin_id)})
 
     def create(self, username: str, name: str = "", password: str = "",
-               role: str = "admin", is_active: bool = True) -> Optional[dict]:
+               role: str = "admin", is_active: bool = True, modules: list = None) -> Optional[dict]:
         """Create a new admin. Returns None if username already exists."""
         if self.collection.find_one({"username": username}):
             return None  # duplicate
@@ -65,6 +65,7 @@ class AdminUsecase:
             "name": name,
             "password_hash": _hash_password(password),
             "role": role,
+            "modules": modules or [],
             "is_active": is_active,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
@@ -73,7 +74,7 @@ class AdminUsecase:
         return self.collection.find_one({"_id": result.inserted_id})
 
     def update(self, admin_id: str, name: str = "", password: str = "",
-               role: str = "admin", is_active: bool = True) -> Optional[dict]:
+               role: str = "admin", is_active: bool = True, modules: list = None) -> Optional[dict]:
         """Update an admin. Returns updated admin or None if not found."""
         existing = self.find_by_id(admin_id)
         if not existing:
@@ -81,6 +82,7 @@ class AdminUsecase:
         update_fields = {
             "name": name,
             "role": role,
+            "modules": modules or [],
             "is_active": is_active,
             "updated_at": datetime.utcnow(),
         }
@@ -101,6 +103,7 @@ class AdminUsecase:
             "username": admin.get("username", ""),
             "name": admin.get("name", ""),
             "role": admin.get("role", "admin"),
+            "modules": admin.get("modules", []),
             "is_active": admin.get("is_active", True),
             "last_login_at": admin.get("last_login_at"),
         }

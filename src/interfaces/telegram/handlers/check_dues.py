@@ -219,12 +219,8 @@ def _search_families(text: str) -> list:
     from drivers.mongo.connection import Mongo
     db = Mongo().get_db()
 
-    print(f"[TG] Searching families with text: '{text}'")
-
     # Try to split input into name + block parts
     name_part, block, house_number = _parse_input(text)
-
-    print(f"[TG] Parsed: name='{name_part}', block='{block}', house_number='{house_number}'")
 
     families_found = []
 
@@ -238,8 +234,6 @@ def _search_families(text: str) -> list:
         house_ids = [str(h["_id"]) for h in houses]
         house_map = {str(h["_id"]): f"Blok {h.get('block', '')} No.{h.get('houseNumber', '')}" for h in houses}
 
-        print(f"[TG] Found {len(houses)} houses for block={block}, number={house_number}")
-
         if house_ids:
             # Step 2: Find families in those houses
             fam_query = {"houseId": {"$in": house_ids}, "status": "active"}
@@ -249,7 +243,6 @@ def _search_families(text: str) -> list:
                 fam_query["headName"] = {"$regex": name_part, "$options": "i"}
 
             fams = list(db.families.find(fam_query))
-            print(f"[TG] Found {len(fams)} families in block")
 
             for f in fams:
                 families_found.append({
@@ -264,7 +257,6 @@ def _search_families(text: str) -> list:
             "headName": {"$regex": name_part, "$options": "i"},
             "status": "active",
         }))
-        print(f"[TG] Found {len(fams)} families by name '{name_part}'")
 
         for f in fams:
             house_label = "-"

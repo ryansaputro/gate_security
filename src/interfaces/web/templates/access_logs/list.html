@@ -47,23 +47,23 @@
         {% for log in logs %}
         <tr class="table-row hover:bg-slate-50/50">
           <td class="px-5 py-3.5 text-xs text-slate-700">{{ log.timestamp.strftime('%d %b %Y %H:%M:%S') if log.timestamp else '-' }}</td>
-          <td class="px-5 py-3.5 text-slate-700">{{ log.gate or '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-700">{{ log.gate_id or '-' }}</td>
           <td class="px-5 py-3.5">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-              {{ 'bg-blue-50 text-blue-700' if log.direction == 'in' else 'bg-purple-50 text-purple-700' }}">
+              {{ 'bg-blue-50 text-blue-700' if log.direction == 'entry' else 'bg-purple-50 text-purple-700' }}">
               {{ log.direction or '-' }}
             </span>
           </td>
           <td class="px-5 py-3.5 text-slate-600">{{ log.method or '-' }}</td>
-          <td class="px-5 py-3.5 font-mono text-slate-700">{{ log.plate_number or '-' }}</td>
-          <td class="px-5 py-3.5 text-slate-600">{{ '%.0f%%'|format(log.confidence * 100) if log.confidence else '-' }}</td>
+          <td class="px-5 py-3.5 font-mono text-slate-700">{{ log.plate_detected or '-' }}</td>
+          <td class="px-5 py-3.5 text-slate-600">{{ '%.0f%%'|format(log.plate_confidence * 100) if log.plate_confidence else '-' }}</td>
           <td class="px-5 py-3.5">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-              {{ 'bg-emerald-50 text-emerald-700' if log.result == 'granted' else 'bg-red-50 text-red-700' }}">
-              {{ log.result or '-' }}
+              {{ 'bg-emerald-50 text-emerald-700' if log.validation_result == 'granted' else 'bg-red-50 text-red-700' }}">
+              {{ log.validation_result or '-' }}
             </span>
           </td>
-          <td class="px-5 py-3.5 text-xs text-slate-500">{{ log.reason or '-' }}</td>
+          <td class="px-5 py-3.5 text-xs text-slate-500">{{ log.denied_reason or '-' }}</td>
         </tr>
         {% endfor %}
         {% if not logs %}

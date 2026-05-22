@@ -102,19 +102,19 @@ async def _event_generator() -> AsyncGenerator[str, None]:
 @router.get("", response_class=HTMLResponse)
 def live_monitor_page(request: Request):
     """Render live monitor page."""
-    from interfaces.web.routes import require_auth, render
-    user = require_auth(request)
-    if not user:
-        return RedirectResponse(url="/admin/login", status_code=303)
-    return render("live_monitor.html", active="live_monitor")
+    from interfaces.web.routes import require_module, render
+    user, err = require_module(request, "live_monitor")
+    if err:
+        return err
+    return render("live_monitor.html", user=user, active="live_monitor")
 
 
 @router.get("/stream")
 def mjpeg_stream(request: Request):
     """MJPEG stream — proxies frames from the running OCR process."""
-    from interfaces.web.routes import require_auth
-    user = require_auth(request)
-    if not user:
+    from interfaces.web.routes import require_module
+    user, err = require_module(request, "live_monitor")
+    if err:
         return JSONResponse(status_code=401, content={"message": "Unauthorized"})
     return StreamingResponse(
         _generate_mjpeg(),
@@ -125,9 +125,9 @@ def mjpeg_stream(request: Request):
 @router.get("/events")
 async def sse_events(request: Request):
     """SSE endpoint — streams plate detection events from the OCR process."""
-    from interfaces.web.routes import require_auth
-    user = require_auth(request)
-    if not user:
+    from interfaces.web.routes import require_module
+    user, err = require_module(request, "live_monitor")
+    if err:
         return JSONResponse(status_code=401, content={"message": "Unauthorized"})
     return StreamingResponse(
         _event_generator(),
@@ -139,10 +139,10 @@ async def sse_events(request: Request):
 @router.get("/status")
 def ocr_status(request: Request):
     """Get OCR process status."""
-    from interfaces.web.routes import require_auth
+    from interfaces.web.routes import require_module
     from shared_state import get_status, get_latest_frame
-    user = require_auth(request)
-    if not user:
+    user, err = require_module(request, "live_monitor")
+    if err:
         return JSONResponse(status_code=401, content={"message": "Unauthorized"})
 
     status = get_status()
@@ -154,9 +154,9 @@ def ocr_status(request: Request):
 @router.post("/gate-open")
 def manual_gate_open(request: Request):
     """Manually trigger gate open."""
-    from interfaces.web.routes import require_auth
-    user = require_auth(request)
-    if not user:
+    from interfaces.web.routes import require_module
+    user, err = require_module(request, "live_monitor")
+    if err:
         return JSONResponse(status_code=401, content={"message": "Unauthorized"})
 
     try:

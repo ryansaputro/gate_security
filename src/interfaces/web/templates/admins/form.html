@@ -7,6 +7,10 @@
 <div class="max-w-2xl">
   <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ 'Edit' if admin_user else 'Create' }} Admin</h2>
 
+  {% if error %}
+  <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{{ error }}</div>
+  {% endif %}
+
   <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
@@ -25,7 +29,7 @@
 
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
-      <select name="role" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <select name="role" id="role-select" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleModules()">
         <option value="admin" {{ 'selected' if admin_user and admin_user.role == 'admin' else '' }}>Admin</option>
         <option value="superadmin" {{ 'selected' if admin_user and admin_user.role == 'superadmin' else '' }}>Super Admin</option>
         <option value="security" {{ 'selected' if admin_user and admin_user.role == 'security' else '' }}>Security</option>
@@ -39,15 +43,76 @@
       </label>
     </div>
 
+    <!-- Module Access (RBAC) -->
+    <div id="modules-section">
+      <label class="block text-sm font-medium text-gray-700 mb-2">Module Access</label>
+      <p class="text-xs text-gray-500 mb-3">Select which modules this admin can access. Superadmin has full access regardless of selection.</p>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2 bg-gray-50 rounded-lg p-4">
+        {% set admin_modules = admin_user.modules if admin_user and admin_user.modules else [] %}
+        {% set module_labels = {
+          'dashboard': 'Dashboard',
+          'houses': 'Houses',
+          'families': 'Families',
+          'vehicles': 'Vehicles',
+          'rfid': 'RFID Cards',
+          'guests': 'Guests',
+          'dues': 'Dues (Iuran)',
+          'telegram_bindings': 'TG Bindings',
+          'events': 'Events',
+          'access_logs': 'Access Logs',
+          'settings': 'Settings',
+          'admins': 'Admins',
+          'live_monitor': 'Live Monitor'
+        } %}
+        {% for module in all_modules|default(['dashboard', 'houses', 'families', 'vehicles', 'rfid', 'guests', 'dues', 'telegram_bindings', 'events', 'access_logs', 'settings', 'admins', 'live_monitor']) %}
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="modules[]" value="{{ module }}" {{ 'checked' if module in admin_modules else '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+          <span class="text-gray-700">{{ module_labels.get(module, module) }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="mt-2 flex gap-2">
+        <button type="button" onclick="selectAllModules()" class="text-xs text-blue-600 hover:text-blue-800">Select All</button>
+        <span class="text-xs text-gray-400">|</span>
+        <button type="button" onclick="deselectAllModules()" class="text-xs text-blue-600 hover:text-blue-800">Deselect All</button>
+      </div>
+    </div>
+
     <div class="flex gap-3 pt-4">
       <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
       <a href="/admin/admins" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
-      {% if admin_user %}
-      <form method="POST" action="/admin/admins/{{ admin_user._id }}/delete" class="ml-auto" onsubmit="return confirm('Delete this admin?')">
-        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
-      </form>
-      {% endif %}
     </div>
   </form>
+
+  {% if admin_user %}
+  <form method="POST" action="/admin/admins/{{ admin_user._id }}/delete" class="mt-4" onsubmit="return confirm('Delete this admin?')">
+    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+  </form>
+  {% endif %}
 </div>
+
+<script>
+function toggleModules() {
+  const role = document.getElementById('role-select').value;
+  const section = document.getElementById('modules-section');
+  if (role === 'superadmin') {
+    section.style.opacity = '0.5';
+    section.querySelector('p').textContent = 'Superadmin has full access to all modules — no selection needed.';
+  } else {
+    section.style.opacity = '1';
+    section.querySelector('p').textContent = 'Select which modules this admin can access. Superadmin has full access regardless of selection.';
+  }
+}
+
+function selectAllModules() {
+  document.querySelectorAll('input[name="modules[]"]').forEach(cb => cb.checked = true);
+}
+
+function deselectAllModules() {
+  document.querySelectorAll('input[name="modules[]"]').forEach(cb => cb.checked = false);
+}
+
+// Run on page load
+toggleModules();
+</script>
 {% endblock %}

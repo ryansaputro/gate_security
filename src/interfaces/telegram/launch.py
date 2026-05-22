@@ -30,6 +30,17 @@ from interfaces.telegram.handlers.register import (
     receive_register_input,
     WAITING_REGISTER_INPUT,
 )
+from interfaces.telegram.handlers.admin import (
+    start_admin,
+    receive_username,
+    receive_password,
+    admin_menu_choice,
+    admin_approve_choice,
+    ADMIN_USERNAME,
+    ADMIN_PASSWORD,
+    ADMIN_MENU,
+    ADMIN_APPROVE,
+)
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -90,6 +101,19 @@ def launch():
     app.add_handler(daftar_handler)
     app.add_handler(tagihan_handler)
 
+    # /admin conversation
+    admin_handler = ConversationHandler(
+        entry_points=[CommandHandler("admin", start_admin)],
+        states={
+            ADMIN_USERNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_username)],
+            ADMIN_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_password)],
+            ADMIN_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin_menu_choice)],
+            ADMIN_APPROVE: [MessageHandler(filters.TEXT & ~filters.COMMAND, admin_approve_choice)],
+        },
+        fallbacks=[CommandHandler("start", cmd_start)],
+    )
+    app.add_handler(admin_handler)
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -99,6 +123,7 @@ def launch():
                 BotCommand("start", "Mulai"),
                 BotCommand("daftar", "Daftarkan akun"),
                 BotCommand("tagihan", "Cek tagihan"),
+                BotCommand("admin", "Admin panel"),
                 BotCommand("help", "Bantuan"),
             ])
             print("Bot commands registered")
